@@ -1,0 +1,61 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAllowedUser() {
+      return isAuthenticated() && (
+        request.auth.uid == 'IQewhJrjzzVORIjYuOKn1Lau8MG3' ||
+        request.auth.uid == 'GQMi1IhBIAh8IFfKyQ4FMBwXPMs1' ||
+        request.auth.uid == '5udg1iXlBVUctWsd0nMzT2LQECt2' ||
+        request.auth.uid == 'y0wo2ZQ8NAQEXEcZLFjVGYPoT1e2'
+      );
+    }
+
+    function isOwner(userId) {
+      return isAllowedUser() && request.auth.uid == userId;
+    }
+
+    function isPartner(userId) {
+      return isAllowedUser() && (
+        ((request.auth.uid == 'IQewhJrjzzVORIjYuOKn1Lau8MG3' || request.auth.uid == 'GQMi1IhBIAh8IFfKyQ4FMBwXPMs1') && (userId == '5udg1iXlBVUctWsd0nMzT2LQECt2' || userId == 'y0wo2ZQ8NAQEXEcZLFjVGYPoT1e2')) ||
+        ((request.auth.uid == '5udg1iXlBVUctWsd0nMzT2LQECt2' || request.auth.uid == 'y0wo2ZQ8NAQEXEcZLFjVGYPoT1e2') && (userId == 'IQewhJrjzzVORIjYuOKn1Lau8MG3' || userId == 'GQMi1IhBIAh8IFfKyQ4FMBwXPMs1'))
+      );
+    }
+
+    // User Profile Documents: users/{userId}
+    match /users/{userId} {
+      allow read: if isAllowedUser();
+      allow create, update, delete: if isOwner(userId);
+
+      // Habits subcollection: users/{userId}/habits/{habitId}
+      match /habits/{habitId} {
+        allow read: if isOwner(userId) || isPartner(userId);
+        allow create, update, delete: if isOwner(userId);
+      }
+
+      // Habit Logs subcollection: users/{userId}/habitLogs/{logId}
+      match /habitLogs/{logId} {
+        allow read: if isOwner(userId) || isPartner(userId);
+        allow create, update, delete: if isOwner(userId);
+      }
+
+      // Activity Feed subcollection: users/{userId}/activity/{eventId}
+      match /activity/{eventId} {
+        allow read: if isAllowedUser();
+        allow create, update, delete: if isOwner(userId);
+      }
+
+      // Interactions subcollection: users/{userId}/interactions/{interactionId}
+      match /interactions/{interactionId} {
+        allow read: if isAllowedUser();
+        allow create, update, delete: if isAllowedUser();
+      }
+    }
+  }
+}
