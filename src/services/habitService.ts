@@ -8,6 +8,60 @@ function todayStr(): string {
   return new Date().toISOString().split('T')[0];
 }
 
+/**
+ * Single source of truth for whether a habit is scheduled on a given date.
+ * Handles both new recurrence-based habits and legacy repeatType/selectedDays habits.
+ */
+export function isScheduledOnDate(habit: Habit, dateStr: string): boolean {
+  const msPerDay = 1000 * 60 * 60 * 24;
+  // Use UTC noon to avoid any DST shift issues
+  const toUTC = (s: string) => new Date(s + 'T12:00:00Z').getTime();
+
+  if (habit.recurrence?.enabled) {
+    const rec = habit.recurrence;
+
+    // Before epoch: not scheduled
+    if (dateStr < rec.startDate) return false;
+
+    // Past end date: not scheduled
+    if (rec.endDate && dateStr > rec.endDate) return false;
+
+    if (rec.frequency === 'daily') {
+      const daysDiff = Math.round((toUTC(dateStr) - toUTC(rec.startDate)) / msPerDay);
+      return daysDiff >= 0 && daysDiff % rec.interval === 0;
+    }
+
+    if (rec.frequency === 'weekly') {
+      const dateObj = new Date(dateStr + 'T12:00:00Z');
+      const dayOfWeek = dateObj.getUTCDay();
+      if (!rec.weekDays.includes(dayOfWeek)) return false;
+      // Align to the Sunday of the start-date's week for consistent interval counting
+      const startTs = toUTC(rec.startDate);
+      const startSunday = startTs - new Date(rec.startDate + 'T12:00:00Z').getUTCDay() * msPerDay;
+      const dateSunday = toUTC(dateStr) - dayOfWeek * msPerDay;
+      const weeksDiff = Math.round((dateSunday - startSunday) / (msPerDay * 7));
+      return weeksDiff >= 0 && weeksDiff % rec.interval === 0;
+    }
+
+    if (rec.frequency === 'monthly') {
+      const dateObj = new Date(dateStr + 'T12:00:00Z');
+      const startObj = new Date(rec.startDate + 'T12:00:00Z');
+      if (dateObj.getUTCDate() !== rec.monthDay) return false;
+      const monthsDiff =
+        (dateObj.getUTCFullYear() - startObj.getUTCFullYear()) * 12 +
+        (dateObj.getUTCMonth() - startObj.getUTCMonth());
+      return monthsDiff >= 0 && monthsDiff % rec.interval === 0;
+    }
+
+    return false;
+  }
+
+  // Legacy fallback: no recurrence or recurrence disabled — use repeatType/selectedDays
+  const dayOfWeek = new Date(dateStr + 'T12:00:00Z').getUTCDay();
+  if (habit.repeatType === 'daily') return true;
+  return habit.selectedDays?.includes(dayOfWeek) ?? false;
+}
+
 export function computeStreak(habitId: string, logs: HabitLog[], habit: Habit): { current: number; longest: number } {
   const completedDates = new Set(
     logs
@@ -25,11 +79,8 @@ export function computeStreak(habitId: string, logs: HabitLog[], habit: Habit): 
   const checkDate = new Date();
   for (let i = 0; i < 365; i++) {
     const dateStr = checkDate.toISOString().split('T')[0];
-    const dayOfWeek = checkDate.getDay();
 
-    const shouldRun =
-      habit.repeatType === 'daily' ||
-      (habit.selectedDays && habit.selectedDays.includes(dayOfWeek));
+    const shouldRun = isScheduledOnDate(habit, dateStr);
 
     if (!shouldRun) {
       checkDate.setDate(checkDate.getDate() - 1);
@@ -303,12 +354,8 @@ export const habitService = {
     const habits = await this.getHabits(userId);
     const active = habits.filter(h => !h.isArchived);
     const today = todayStr();
-    const dayOfWeek = new Date().getDay();
+    const todayHabits = active.filter(h => isScheduledOnDate(h, today));
 
-    const todayHabits = active.filter(h => {
-      if (h.repeatType === 'daily') return true;
-      return h.selectedDays && h.selectedDays.includes(dayOfWeek);
-    });
 
     const completedCount = todayHabits.filter(h => h.todayLog?.completed).length;
     const total = todayHabits.length;

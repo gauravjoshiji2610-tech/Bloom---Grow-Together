@@ -10,8 +10,9 @@ import { Avatar } from '../components/Avatar';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { EmptyState } from '../components/EmptyState';
 import { authService } from '../services/authService';
-import { habitService } from '../services/habitService';
+import { habitService, isScheduledOnDate } from '../services/habitService';
 import { activityService } from '../services/activityService';
+
 import { GAURAV_ID, RADHIKA_ID } from '../data/mockData';
 import { getGreeting, getCategoryLabel } from '../utils/helpers';
 import type { User, ActivityEvent, HabitWithLog } from '../types';
@@ -50,10 +51,9 @@ export const DashboardPage: React.FC = () => {
   }, [currentUser?.uid]);
 
   const myActiveHabits = habits.filter(h => !h.isArchived);
-  const todayHabits = myActiveHabits.filter(h => {
-    if (h.repeatType === 'daily') return true;
-    return h.selectedDays.includes(new Date().getDay());
-  });
+  const _todayStr = new Date().toISOString().split('T')[0];
+  const todayHabits = myActiveHabits.filter(h => isScheduledOnDate(h, _todayStr));
+
   const completedToday = todayHabits.filter(h => h.todayLog?.completed);
   const remainingToday = todayHabits.filter(h => !h.todayLog?.completed);
   const myMaxStreak = Math.max(...myActiveHabits.map(h => h.streak), 0);

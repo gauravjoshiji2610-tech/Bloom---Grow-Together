@@ -1,6 +1,7 @@
 import type { UserId, DayProgress, CategoryStats, HabitCategory } from '../types';
 import { storageService } from './storageService';
-import { computeStreak } from './habitService';
+import { computeStreak, isScheduledOnDate } from './habitService';
+
 
 const CATEGORY_COLORS: Record<HabitCategory, string> = {
   health: '#10B981',
@@ -29,10 +30,8 @@ export const analyticsService = {
       const date = d.toISOString().split('T')[0];
       const dayOfWeek = d.getDay();
 
-      const habitsForDay = userHabits.filter(h => {
-        if (h.repeatType === 'daily') return true;
-        return h.selectedDays.includes(dayOfWeek);
-      });
+      const habitsForDay = userHabits.filter(h => isScheduledOnDate(h, date));
+
 
       const completed = habitsForDay.filter(h => {
         const log = logs.find(l => l.habitId === h.id && l.date === date && l.completed);

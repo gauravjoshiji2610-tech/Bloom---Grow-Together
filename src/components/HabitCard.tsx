@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { CheckCircle2, Circle, Clock, Archive, Edit3, Trash2, RotateCcw, MoreVertical, Star } from 'lucide-react';
+import { CheckCircle2, Circle, Clock, Archive, Edit3, Trash2, RotateCcw, MoreVertical, Star, RefreshCw } from 'lucide-react';
 import type { HabitWithLog } from '../types';
 import { getCategoryLabel, getDayName, formatRelativeTime } from '../utils/helpers';
 import { StreakBadge } from './StreakBadge';
+import { LinkifiedText } from './LinkifiedText';
 
 interface HabitCardProps {
   habit: HabitWithLog;
@@ -35,9 +36,27 @@ export const HabitCard: React.FC<HabitCardProps> = ({
     low: '#10B981',
   };
 
-  const scheduleText = habit.repeatType === 'daily'
-    ? 'Every day'
-    : habit.selectedDays.map(d => getDayName(d, true)).join(', ');
+  const scheduleText = (() => {
+    if (habit.recurrence?.enabled) {
+      const { frequency, interval, weekDays, monthDay } = habit.recurrence;
+      if (frequency === 'daily') {
+        return interval === 1 ? 'Every day' : `Every ${interval} days`;
+      }
+      if (frequency === 'weekly') {
+        const dayNames = weekDays.map(d => getDayName(d, true)).join(', ');
+        return interval === 1 ? dayNames : `Every ${interval}w — ${dayNames}`;
+      }
+      if (frequency === 'monthly') {
+        return interval === 1 ? `Monthly on ${monthDay}` : `Every ${interval} months on ${monthDay}`;
+      }
+    }
+    // Legacy fallback
+    return habit.repeatType === 'daily'
+      ? 'Every day'
+      : habit.selectedDays.map(d => getDayName(d, true)).join(', ');
+  })();
+
+  const showRecurrenceBadge = habit.recurrence?.enabled && habit.recurrence.interval > 1;
 
   return (
     <motion.div
@@ -101,7 +120,7 @@ export const HabitCard: React.FC<HabitCardProps> = ({
 
             {habit.description && (
               <p className="text-xs mb-2 text-gray-400 line-clamp-2 leading-relaxed">
-                {habit.description}
+                <LinkifiedText text={habit.description} />
               </p>
             )}
 
@@ -111,7 +130,8 @@ export const HabitCard: React.FC<HabitCardProps> = ({
                 <Clock size={11} />
                 {habit.time}
               </span>
-              <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+              <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                {showRecurrenceBadge && <RefreshCw size={10} />}
                 {scheduleText}
               </span>
             </div>

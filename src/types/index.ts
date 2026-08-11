@@ -29,6 +29,18 @@ export type HabitCategory =
 export type HabitPriority = 'low' | 'medium' | 'high';
 export type RepeatType = 'daily' | 'weekly' | 'custom';
 
+export type RecurrenceFrequency = 'daily' | 'weekly' | 'monthly';
+
+export interface HabitRecurrence {
+  enabled: boolean;
+  frequency: RecurrenceFrequency;
+  interval: number;       // 1 = every day/week/month, 2 = every 2nd, etc.
+  weekDays: number[];     // [0-6] Sun–Sat, used when frequency='weekly'
+  monthDay: number;       // 1–31, day of month when frequency='monthly'
+  endDate: string | null; // YYYY-MM-DD or null (no end)
+  startDate: string;      // YYYY-MM-DD — epoch for interval math
+}
+
 export interface Habit {
   id: string;
   userId: UserId;
@@ -46,6 +58,7 @@ export interface Habit {
   reminderEnabled: boolean;
   reminderTime: string;
   isArchived: boolean;
+  recurrence?: HabitRecurrence; // optional — missing means old habit, uses repeatType/selectedDays
   createdAt: string;
   updatedAt: string;
 }
