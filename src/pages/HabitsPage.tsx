@@ -10,6 +10,7 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 import { EmptyState } from '../components/EmptyState';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { LinkifiedText } from '../components/LinkifiedText';
+import { ExpandableDescription } from '../components/ExpandableDescription';
 import { GAURAV_ID, RADHIKA_ID } from '../data/mockData';
 import { habitService } from '../services/habitService';
 import type { Habit, HabitWithLog, HabitCategory, HabitPriority, RepeatType, HabitRecurrence, SharedHabitRequest } from '../types';
@@ -398,9 +399,7 @@ export const HabitsPage: React.FC = () => {
                     <div className="flex-1 min-w-0">
                       <h3 className="font-bold text-white text-base truncate">{habitData.name}</h3>
                       {habitData.description && (
-                        <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">
-                          <LinkifiedText text={habitData.description} />
-                        </p>
+                        <ExpandableDescription description={habitData.description} className="mt-1" />
                       )}
                     </div>
                   </div>
@@ -583,10 +582,15 @@ export const HabitsPage: React.FC = () => {
 
           {/* Description */}
           <div>
-            <label className="label">Description</label>
-            <input
-              type="text" placeholder="Why is this habit important?"
-              className="input-field" value={form.description}
+            <div className="flex items-center justify-between mb-1">
+              <label className="label mb-0">Description</label>
+              <span className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>Multiline & URLs supported</span>
+            </div>
+            <textarea
+              rows={3}
+              placeholder="Why is this habit important? (Press Enter for new lines, add links, etc.)"
+              className="input-field resize-y min-h-[84px] leading-relaxed text-sm py-2.5"
+              value={form.description}
               onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
             />
           </div>

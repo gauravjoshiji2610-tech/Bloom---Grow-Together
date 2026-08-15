@@ -4,7 +4,7 @@ import { CheckCircle2, Circle, Clock, Archive, Edit3, Trash2, RotateCcw, MoreVer
 import type { HabitWithLog } from '../types';
 import { getCategoryLabel, getDayName, formatRelativeTime } from '../utils/helpers';
 import { StreakBadge } from './StreakBadge';
-import { LinkifiedText } from './LinkifiedText';
+import { ExpandableDescription } from './ExpandableDescription';
 
 interface HabitCardProps {
   habit: HabitWithLog;
@@ -119,9 +119,7 @@ export const HabitCard: React.FC<HabitCardProps> = ({
             </div>
 
             {habit.description && (
-              <p className="text-xs mb-2 text-gray-400 line-clamp-2 leading-relaxed">
-                <LinkifiedText text={habit.description} />
-              </p>
+              <ExpandableDescription description={habit.description} className="mb-2" />
             )}
 
             <div className="flex flex-wrap items-center gap-2 mt-2">
