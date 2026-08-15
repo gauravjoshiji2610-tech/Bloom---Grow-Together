@@ -94,7 +94,40 @@ export type ActivityType =
   | 'partner_cheer'
   | 'partner_message'
   | 'streak_milestone'
-  | 'profile_updated';
+  | 'profile_updated'
+  | 'habit_shared'
+  | 'habit_accepted'
+  | 'habit_declined';
+
+export type SharedHabitRequestStatus = 'pending' | 'accepted' | 'declined';
+
+export interface SharedHabitRequest {
+  id: string;
+  senderId: UserId;
+  senderName: string;
+  recipientId: UserId;
+  recipientName: string;
+  status: SharedHabitRequestStatus;
+  createdAt: string;
+  respondedAt?: string;
+  habitData: {
+    name: string;
+    description: string;
+    category: HabitCategory;
+    icon: string;
+    color: string;
+    repeatType: RepeatType;
+    selectedDays: number[];
+    time: string;
+    priority: HabitPriority;
+    goal: string;
+    notes: string;
+    reminderEnabled: boolean;
+    reminderTime: string;
+    isArchived?: boolean;
+    recurrence?: HabitRecurrence;
+  };
+}
 
 export interface ActivityEvent {
   id: string;

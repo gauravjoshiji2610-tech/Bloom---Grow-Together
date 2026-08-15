@@ -1,4 +1,4 @@
-import type { Habit, HabitLog, HabitWithLog, UserId, ActivityType } from '../types';
+import type { Habit, HabitLog, HabitWithLog, UserId, ActivityType, SharedHabitRequest, HabitRecurrence } from '../types';
 import { activityService } from './activityService';
 import { storageService } from './storageService';
 import { db } from './firebase';
@@ -377,6 +377,186 @@ export const habitService = {
       return unsub;
     } catch (e) {
       console.warn('Firestore snapshot listener offline fallback:', e);
+      return () => {};
+    }
+  },
+
+  // ── Shared Habit Requests ───────────────────────────────
+  async sendShareRequest(
+    senderId: UserId,
+    senderName: string,
+    recipientId: UserId,
+    recipientName: string,
+    habitData: SharedHabitRequest['habitData']
+  ): Promise<SharedHabitRequest> {
+    const requestId = 'req_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+    const newRequest: SharedHabitRequest = {
+      id: requestId,
+      senderId,
+      senderName,
+      recipientId,
+      recipientName,
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+      habitData,
+    };
+
+    try {
+      const docRef = doc(db, 'users', recipientId, 'habitRequests', requestId);
+      await setDoc(docRef, newRequest);
+    } catch (e) {
+      console.warn('Firestore sendShareRequest offline fallback:', e);
+    }
+
+    const requests = storageService.getHabitRequests();
+    const existingIdx = requests.findIndex(r => r.id === requestId);
+    if (existingIdx !== -1) {
+      requests[existingIdx] = newRequest;
+    } else {
+      requests.unshift(newRequest);
+    }
+    storageService.saveHabitRequests(requests);
+
+    activityService.addEvent({
+      type: 'habit_shared',
+      actorId: senderId,
+      targetId: recipientId,
+      habitName: habitData.name,
+      message: `Shared "${habitData.name}" with ${recipientName}`,
+    });
+
+    return newRequest;
+  },
+
+  async syncFirestoreRequests(userId: UserId): Promise<void> {
+    try {
+      const requestsCol = collection(db, 'users', userId, 'habitRequests');
+      const snap = await getDocs(requestsCol);
+      const remoteRequests = snap ? snap.docs.map(docSnap => docSnap.data() as SharedHabitRequest) : [];
+      const current = storageService.getHabitRequests();
+      const map = new Map<string, SharedHabitRequest>();
+      current.forEach(r => map.set(r.id, r));
+      remoteRequests.forEach(r => map.set(r.id, r));
+      storageService.saveHabitRequests(Array.from(map.values()));
+    } catch (e) {
+      console.warn('Firestore habitRequests sync offline fallback:', e);
+    }
+  },
+
+  async getReceivedRequests(recipientId: UserId): Promise<SharedHabitRequest[]> {
+    await this.syncFirestoreRequests(recipientId);
+    const all = storageService.getHabitRequests();
+    return all.filter(r => r.recipientId === recipientId);
+  },
+
+  async getSentRequests(senderId: UserId, partnerId: UserId): Promise<SharedHabitRequest[]> {
+    await this.syncFirestoreRequests(partnerId);
+    const all = storageService.getHabitRequests();
+    return all.filter(r => r.senderId === senderId);
+  },
+
+  async acceptShareRequest(request: SharedHabitRequest, recipientId: UserId): Promise<Habit> {
+    const today = todayStr();
+    // Copy recurrence settings with startDate set to acceptance date
+    const copiedRecurrence: HabitRecurrence | undefined = request.habitData.recurrence
+      ? {
+          ...request.habitData.recurrence,
+          startDate: today, // Acceptance date per requirement!
+        }
+      : undefined;
+
+    const newHabit = await this.createHabit({
+      ...request.habitData,
+      userId: recipientId,
+      isArchived: false,
+      recurrence: copiedRecurrence,
+    });
+
+    const updatedRequest: SharedHabitRequest = {
+      ...request,
+      status: 'accepted',
+      respondedAt: new Date().toISOString(),
+    };
+
+    try {
+      const docRef = doc(db, 'users', request.recipientId, 'habitRequests', request.id);
+      await setDoc(docRef, updatedRequest, { merge: true });
+    } catch (e) {
+      console.warn('Firestore acceptShareRequest offline fallback:', e);
+    }
+
+    const requests = storageService.getHabitRequests();
+    const idx = requests.findIndex(r => r.id === request.id);
+    if (idx !== -1) {
+      requests[idx] = updatedRequest;
+    } else {
+      requests.push(updatedRequest);
+    }
+    storageService.saveHabitRequests(requests);
+
+    activityService.addEvent({
+      type: 'habit_accepted',
+      actorId: recipientId,
+      targetId: request.senderId,
+      habitName: request.habitData.name,
+      message: `Accepted shared habit "${request.habitData.name}" from ${request.senderName}`,
+    });
+
+    return newHabit;
+  },
+
+  async declineShareRequest(request: SharedHabitRequest): Promise<void> {
+    const updatedRequest: SharedHabitRequest = {
+      ...request,
+      status: 'declined',
+      respondedAt: new Date().toISOString(),
+    };
+
+    try {
+      const docRef = doc(db, 'users', request.recipientId, 'habitRequests', request.id);
+      await setDoc(docRef, updatedRequest, { merge: true });
+    } catch (e) {
+      console.warn('Firestore declineShareRequest offline fallback:', e);
+    }
+
+    const requests = storageService.getHabitRequests();
+    const idx = requests.findIndex(r => r.id === request.id);
+    if (idx !== -1) {
+      requests[idx] = updatedRequest;
+    } else {
+      requests.push(updatedRequest);
+    }
+    storageService.saveHabitRequests(requests);
+
+    activityService.addEvent({
+      type: 'habit_declined',
+      actorId: request.recipientId,
+      targetId: request.senderId,
+      habitName: request.habitData.name,
+      message: `Declined shared habit request "${request.habitData.name}"`,
+    });
+  },
+
+  subscribeHabitRequests(userId: UserId, callback: (requests: SharedHabitRequest[]) => void): () => void {
+    try {
+      const col = collection(db, 'users', userId, 'habitRequests');
+      const unsub = onSnapshot(col, (snap) => {
+        if (!snap.empty) {
+          const remote = snap.docs.map(docSnap => docSnap.data() as SharedHabitRequest);
+          const current = storageService.getHabitRequests();
+          const map = new Map<string, SharedHabitRequest>();
+          current.forEach(r => map.set(r.id, r));
+          remote.forEach(r => map.set(r.id, r));
+          const merged = Array.from(map.values());
+          storageService.saveHabitRequests(merged);
+          callback(merged.filter(r => r.recipientId === userId));
+        } else {
+          callback([]);
+        }
+      });
+      return unsub;
+    } catch (e) {
+      console.warn('Firestore habitRequests snapshot offline fallback:', e);
       return () => {};
     }
   },

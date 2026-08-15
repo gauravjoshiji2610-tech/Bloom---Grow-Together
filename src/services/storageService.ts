@@ -1,4 +1,4 @@
-import type { User, Habit, HabitLog, ActivityEvent, PartnerInteraction } from '../types';
+import type { User, Habit, HabitLog, ActivityEvent, PartnerInteraction, SharedHabitRequest } from '../types';
 import { defaultUsers } from '../data/mockData';
 
 const KEYS = {
@@ -7,6 +7,7 @@ const KEYS = {
   HABIT_LOGS: 'bloom_habit_logs',
   ACTIVITY_FEED: 'bloom_activity_feed',
   INTERACTIONS: 'bloom_interactions',
+  HABIT_REQUESTS: 'bloom_habit_requests',
   SESSION: 'bloom_session',
   CLEAN_VERSION: 'bloom_clean_v2',
 };
@@ -116,11 +117,20 @@ export const storageService = {
     setItem(KEYS.INTERACTIONS, interactions);
   },
 
+  // Shared Habit Requests
+  getHabitRequests(): SharedHabitRequest[] {
+    return getItem<SharedHabitRequest[]>(KEYS.HABIT_REQUESTS, []);
+  },
+  saveHabitRequests(requests: SharedHabitRequest[]): void {
+    setItem(KEYS.HABIT_REQUESTS, requests);
+  },
+
   // Clear local cache
   clearLocalCache(): void {
     localStorage.removeItem(KEYS.HABITS);
     localStorage.removeItem(KEYS.HABIT_LOGS);
     localStorage.removeItem(KEYS.ACTIVITY_FEED);
     localStorage.removeItem(KEYS.INTERACTIONS);
+    localStorage.removeItem(KEYS.HABIT_REQUESTS);
   },
 };

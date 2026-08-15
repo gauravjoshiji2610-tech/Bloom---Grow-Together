@@ -56,6 +56,13 @@ service cloud.firestore {
         allow read: if isAllowedUser();
         allow create, update, delete: if isAllowedUser();
       }
+
+      // Habit Requests subcollection: users/{userId}/habitRequests/{requestId}
+      match /habitRequests/{requestId} {
+        allow read: if isOwner(userId) || isPartner(userId);
+        allow create: if isPartner(userId);
+        allow update, delete: if isOwner(userId) || isPartner(userId);
+      }
     }
   }
 }
