@@ -31,9 +31,9 @@ export const HabitCard: React.FC<HabitCardProps> = ({
   const isCompleted = habit.todayLog?.completed ?? false;
 
   const priorityColors: Record<string, string> = {
-    high: '#EF4444',
-    medium: '#F59E0B',
-    low: '#10B981',
+    high: '#e10600',
+    medium: '#f59e0b',
+    low: '#10b981',
   };
 
   const scheduleText = (() => {
@@ -69,14 +69,16 @@ export const HabitCard: React.FC<HabitCardProps> = ({
         habit.isArchived ? 'opacity-60' : 'card-hover'
       }`}
       style={{
-        borderColor: isCompleted ? `${habit.color}40` : undefined,
-        background: isCompleted ? `linear-gradient(135deg, ${habit.color}08, #1A1A2E)` : undefined,
+        borderColor: isCompleted ? `${habit.color}45` : 'rgba(255, 255, 255, 0.09)',
+        background: isCompleted
+          ? `linear-gradient(135deg, ${habit.color}10 0%, rgba(14, 20, 30, 0.95) 100%)`
+          : 'rgba(18, 24, 34, 0.86)',
       }}
     >
-      {/* Priority indicator */}
+      {/* Priority Indicator Bar */}
       <div
         className="absolute top-0 left-0 w-1.5 h-full rounded-l-xl"
-        style={{ background: priorityColors[habit.priority] }}
+        style={{ background: priorityColors[habit.priority] || '#10b981' }}
       />
 
       <div className="pl-5 pr-4 py-4">
@@ -84,7 +86,7 @@ export const HabitCard: React.FC<HabitCardProps> = ({
           {/* Complete button */}
           <button
             onClick={() => isCompleted ? onUndo(habit.id) : onComplete(habit.id)}
-            disabled={isCompleting || habit.isArchived}
+            disabled={isCompleCompleting(isCompleting) || habit.isArchived}
             className="flex-shrink-0 mt-0.5 transition-all duration-200 hover:scale-110 active:scale-95"
             aria-label={isCompleted ? 'Undo completion' : 'Mark complete'}
           >
@@ -95,7 +97,14 @@ export const HabitCard: React.FC<HabitCardProps> = ({
               transition={{ type: 'spring', damping: 15, stiffness: 400 }}
             >
               {isCompleted ? (
-                <CheckCircle2 size={26} style={{ color: habit.color }} fill={habit.color} />
+                <CheckCircle2
+                  size={26}
+                  style={{
+                    color: habit.color,
+                    filter: `drop-shadow(0 0 8px ${habit.color}80)`,
+                  }}
+                  fill={habit.color}
+                />
               ) : (
                 <Circle size={26} style={{ color: 'var(--color-text-muted)' }} />
               )}
@@ -110,6 +119,7 @@ export const HabitCard: React.FC<HabitCardProps> = ({
                 className={`font-bold text-base truncate ${
                   isCompleted ? 'line-through opacity-60 text-gray-300' : 'text-white'
                 }`}
+                style={{ fontFamily: 'var(--font-display)' }}
               >
                 {habit.name}
               </h3>
@@ -124,23 +134,29 @@ export const HabitCard: React.FC<HabitCardProps> = ({
 
             <div className="flex flex-wrap items-center gap-2 mt-2">
               <span className="badge badge-purple">{getCategoryLabel(habit.category)}</span>
-              <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--color-text-muted)' }}>
+              <span
+                className="flex items-center gap-1 text-[11px]"
+                style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)' }}
+              >
                 <Clock size={11} />
                 {habit.time}
               </span>
-              <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--color-text-muted)' }}>
+              <span
+                className="flex items-center gap-1 text-[11px]"
+                style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)' }}
+              >
                 {showRecurrenceBadge && <RefreshCw size={10} />}
                 {scheduleText}
               </span>
             </div>
           </div>
 
-          {/* Right side */}
+          {/* Right side options */}
           <div className="flex flex-col items-end gap-2">
             <div className="relative">
               <button
                 onClick={() => setMenuOpen(!menuOpen)}
-                className="btn-ghost p-1.5 rounded-lg"
+                className="btn-ghost p-1.5 rounded-lg text-gray-400 hover:text-white"
                 aria-label="More options"
               >
                 <MoreVertical size={16} />
@@ -148,47 +164,54 @@ export const HabitCard: React.FC<HabitCardProps> = ({
               {menuOpen && (
                 <div
                   className="absolute right-0 top-8 z-20 w-44 rounded-xl border shadow-2xl overflow-hidden glass-strong"
-                  style={{ background: '#1A1A2E', borderColor: 'rgba(255,255,255,0.08)' }}
+                  style={{
+                    background: 'rgba(14, 20, 30, 0.98)',
+                    borderColor: 'rgba(0, 170, 255, 0.3)',
+                    boxShadow: '0 10px 40px rgba(0,0,0,0.8)',
+                  }}
                   onMouseLeave={() => setMenuOpen(false)}
                 >
                   <button
-                    className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm hover:bg-white/[0.04] transition-colors"
-                    style={{ color: 'var(--color-text-secondary)' }}
+                    className="flex items-center gap-2.5 w-full px-4 py-2.5 text-xs font-semibold uppercase tracking-wider hover:bg-white/[0.06] transition-colors"
+                    style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text-secondary)' }}
                     onClick={() => { onEdit(habit); setMenuOpen(false); }}
                   >
-                    <Edit3 size={14} /> Edit
+                    <Edit3 size={13} /> Edit
                   </button>
                   {habit.isArchived ? (
                     onRestore && (
                       <button
-                        className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm hover:bg-white/[0.04] transition-colors"
-                        style={{ color: '#10B981' }}
+                        className="flex items-center gap-2.5 w-full px-4 py-2.5 text-xs font-semibold uppercase tracking-wider hover:bg-white/[0.06] transition-colors"
+                        style={{ fontFamily: 'var(--font-display)', color: '#10B981' }}
                         onClick={() => { onRestore(habit.id); setMenuOpen(false); }}
                       >
-                        <RotateCcw size={14} /> Restore
+                        <RotateCcw size={13} /> Restore
                       </button>
                     )
                   ) : (
                     <button
-                      className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm hover:bg-white/[0.04] transition-colors"
-                      style={{ color: 'var(--color-text-secondary)' }}
+                      className="flex items-center gap-2.5 w-full px-4 py-2.5 text-xs font-semibold uppercase tracking-wider hover:bg-white/[0.06] transition-colors"
+                      style={{ fontFamily: 'var(--font-display)', color: 'var(--color-text-secondary)' }}
                       onClick={() => { onArchive(habit.id); setMenuOpen(false); }}
                     >
-                      <Archive size={14} /> Archive
+                      <Archive size={13} /> Archive
                     </button>
                   )}
                   <button
-                    className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm hover:bg-red-500/10 transition-colors"
-                    style={{ color: '#EF4444' }}
+                    className="flex items-center gap-2.5 w-full px-4 py-2.5 text-xs font-semibold uppercase tracking-wider hover:bg-red-500/10 transition-colors"
+                    style={{ fontFamily: 'var(--font-display)', color: '#e10600' }}
                     onClick={() => { onDelete(habit.id); setMenuOpen(false); }}
                   >
-                    <Trash2 size={14} /> Delete
+                    <Trash2 size={13} /> Delete
                   </button>
                 </div>
               )}
             </div>
             <StreakBadge streak={habit.streak} size="sm" />
-            <div className="text-xs font-semibold" style={{ color: 'var(--color-text-muted)' }}>
+            <div
+              className="text-[10px] font-semibold tracking-wider"
+              style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)' }}
+            >
               {habit.completionRate}% rate
             </div>
           </div>
@@ -207,7 +230,10 @@ export const HabitCard: React.FC<HabitCardProps> = ({
 
         {/* Completed time */}
         {isCompleted && habit.todayLog?.completedAt && (
-          <div className="mt-2 text-[11px] font-medium" style={{ color: 'var(--color-text-muted)' }}>
+          <div
+            className="mt-2 text-[10px] font-medium"
+            style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)' }}
+          >
             Completed {formatRelativeTime(habit.todayLog.completedAt)}
           </div>
         )}
@@ -215,3 +241,7 @@ export const HabitCard: React.FC<HabitCardProps> = ({
     </motion.div>
   );
 };
+
+function isCompleCompleting(val?: boolean): boolean {
+  return !!val;
+}

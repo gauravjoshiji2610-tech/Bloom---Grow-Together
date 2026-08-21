@@ -20,7 +20,7 @@ export const ExpandableDescription: React.FC<ExpandableDescriptionProps> = ({
   const isLong = description.length > 80 || description.includes('\n');
 
   return (
-    <div className={`text-xs text-gray-400 leading-relaxed ${className}`}>
+    <div className={`text-xs text-gray-300/90 leading-relaxed ${className}`}>
       <div
         className={`break-words ${!isExpanded && isLong ? 'line-clamp-2' : ''}`}
         style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
@@ -34,7 +34,8 @@ export const ExpandableDescription: React.FC<ExpandableDescriptionProps> = ({
             e.stopPropagation();
             setIsExpanded(!isExpanded);
           }}
-          className="text-[11px] font-semibold text-purple-400 hover:text-purple-300 mt-1 inline-flex items-center gap-0.5 transition-colors focus:outline-none cursor-pointer"
+          className="text-[11px] font-semibold text-[#00aaff] hover:text-[#38bdf8] mt-1 inline-flex items-center gap-0.5 transition-colors focus:outline-none cursor-pointer tracking-wide"
+          style={{ fontFamily: 'var(--font-display)' }}
         >
           {isExpanded ? 'Read less' : 'Read more'}
         </button>

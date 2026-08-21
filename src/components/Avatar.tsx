@@ -22,15 +22,15 @@ const sizeMap = {
 export const Avatar: React.FC<AvatarProps> = ({ name, src, size = 'md', className, isGaurav, style }) => {
   const { container, text } = sizeMap[size];
   const gradient = isGaurav
-    ? 'linear-gradient(135deg, #7C3AED, #5B21B6)'
-    : 'linear-gradient(135deg, #EC4899, #9333EA)';
+    ? 'linear-gradient(135deg, #1c69d4, #002663)'
+    : 'linear-gradient(135deg, #00aaff, #005599)';
 
   if (src) {
     return (
       <img
         src={src}
         alt={name}
-        className={cn(container, 'rounded-full object-cover border-2 border-white/10', className)}
+        className={cn(container, 'rounded-full object-cover border border-[#00aaff]/40 shadow-[0_0_10px_rgba(0,170,255,0.3)]', className)}
         style={style}
       />
     );
@@ -40,11 +40,16 @@ export const Avatar: React.FC<AvatarProps> = ({ name, src, size = 'md', classNam
     <div
       className={cn(
         container,
-        'rounded-full flex items-center justify-center font-bold border-2 border-white/10 flex-shrink-0',
+        'rounded-full flex items-center justify-center font-bold border border-[#00aaff]/40 flex-shrink-0 shadow-[0_0_10px_rgba(0,170,255,0.25)]',
         text,
         className
       )}
-      style={{ background: gradient, color: 'white', ...style }}
+      style={{
+        background: gradient,
+        color: 'white',
+        fontFamily: 'var(--font-display)',
+        ...style,
+      }}
     >
       {getInitials(name)}
     </div>

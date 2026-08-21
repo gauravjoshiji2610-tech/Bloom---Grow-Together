@@ -39,36 +39,45 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/75 backdrop-blur-md"
             onClick={onClose}
           />
           <motion.div
-            initial={{ opacity: 0, scale: 0.92, y: 20 }}
+            initial={{ opacity: 0, scale: 0.94, y: 15 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.92, y: 20 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 400 }}
-            className={`relative w-full ${sizeMap[size]} glass-strong rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto ${className}`}
-            style={{ border: '1px solid rgba(255,255,255,0.08)' }}
+            exit={{ opacity: 0, scale: 0.94, y: 15 }}
+            transition={{ type: 'spring', damping: 28, stiffness: 450 }}
+            className={`relative w-full ${sizeMap[size]} glass-strong rounded-2xl shadow-[0_20px_70px_rgba(0,0,0,0.85)] overflow-hidden max-h-[90vh] overflow-y-auto ${className}`}
+            style={{
+              background: 'rgba(14, 19, 28, 0.96)',
+              border: '1px solid rgba(0, 170, 255, 0.3)',
+              boxShadow: '0 0 40px rgba(0, 102, 177, 0.25), 0 25px 50px rgba(0, 0, 0, 0.8)',
+            }}
           >
             {title && (
-              <div className="flex items-center justify-between p-6 border-b border-white/[0.06]">
-                <h2 className="text-lg font-bold text-white">{title}</h2>
+              <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.08]">
+                <h2
+                  className="text-base font-bold tracking-wide text-white uppercase"
+                  style={{ fontFamily: 'var(--font-display)' }}
+                >
+                  {title}
+                </h2>
                 <button
                   onClick={onClose}
-                  className="btn-ghost p-2 rounded-xl"
+                  className="btn-ghost p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/[0.06]"
                   aria-label="Close modal"
                 >
-                  <X size={18} />
+                  <X size={17} />
                 </button>
               </div>
             )}
             {!title && (
               <button
                 onClick={onClose}
-                className="absolute top-4 right-4 btn-ghost p-2 rounded-xl z-10"
+                className="absolute top-4 right-4 btn-ghost p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/[0.06] z-10"
                 aria-label="Close modal"
               >
-                <X size={18} />
+                <X size={17} />
               </button>
             )}
             <div className={title ? 'p-6' : 'p-6 pt-10'}>

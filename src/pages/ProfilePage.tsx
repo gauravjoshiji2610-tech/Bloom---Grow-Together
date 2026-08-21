@@ -71,7 +71,7 @@ export const ProfilePage: React.FC = () => {
     setIsSaving(true);
     try {
       await updateProfile(form);
-      toast.success('Profile saved to Firestore! ✨');
+      toast.success('Pilot profile saved to Firestore! ⚡');
       setIsEditing(false);
     } catch {
       toast.error('Failed to save profile');
@@ -97,24 +97,29 @@ export const ProfilePage: React.FC = () => {
   if (!currentUser) return null;
 
   return (
-    <div className="p-4 md:p-6 max-w-2xl mx-auto">
+    <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-6">
       <motion.div variants={containerVariants} initial="hidden" animate="show" className="space-y-6">
 
         {/* Header */}
         <motion.div variants={itemVariants} className="flex items-center justify-between">
           <div>
-            <h1 className="page-title mb-1">Profile</h1>
-            <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Manage your personal details</p>
+            <h1 className="page-title mb-1">Pilot Profile</h1>
+            <p
+              className="text-xs font-semibold tracking-wider uppercase"
+              style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)' }}
+            >
+              Identity & Specification Settings
+            </p>
           </div>
           {!isEditing ? (
-            <button className="btn-primary" onClick={() => setIsEditing(true)}>
-              <Edit2 size={14} /> Edit Profile
+            <button className="btn-primary text-xs" onClick={() => setIsEditing(true)}>
+              <Edit2 size={13} /> Edit Profile
             </button>
           ) : (
             <div className="flex gap-2">
-              <button className="btn-secondary" onClick={handleCancel} disabled={isSaving}>Cancel</button>
-              <button className="btn-primary" onClick={handleSave} disabled={isSaving}>
-                <Save size={14} /> {isSaving ? 'Saving...' : 'Save Profile'}
+              <button className="btn-secondary text-xs" onClick={handleCancel} disabled={isSaving}>Cancel</button>
+              <button className="btn-primary text-xs" onClick={handleSave} disabled={isSaving}>
+                <Save size={13} /> {isSaving ? 'Saving...' : 'Save Profile'}
               </button>
             </div>
           )}
@@ -123,12 +128,11 @@ export const ProfilePage: React.FC = () => {
         {/* Profile Identity Card */}
         <motion.div
           variants={itemVariants}
-          className="card p-6"
+          className="card p-6 border border-white/10 glass-strong"
           style={{
-            background: isGaurav
-              ? 'linear-gradient(135deg, rgba(139,92,246,0.12), rgba(24,24,36,0.95))'
-              : 'linear-gradient(135deg, rgba(236,72,153,0.12), rgba(24,24,36,0.95))',
-            borderColor: isGaurav ? 'rgba(139,92,246,0.25)' : 'rgba(236,72,153,0.25)',
+            background: 'linear-gradient(135deg, rgba(0, 102, 177, 0.25) 0%, rgba(14, 20, 30, 0.96) 60%)',
+            borderColor: 'rgba(0, 170, 255, 0.35)',
+            boxShadow: '0 10px 40px rgba(0, 0, 0, 0.6)',
           }}
         >
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
@@ -140,6 +144,7 @@ export const ProfilePage: React.FC = () => {
                 size="2xl"
                 isGaurav={isGaurav}
               />
+              <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-[#0e131c] bg-[#00aaff] shadow-[0_0_8px_#00aaff]" />
             </div>
 
             {/* Info or Edit Form */}
@@ -158,7 +163,7 @@ export const ProfilePage: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="label">Bio</label>
+                    <label className="label">Bio / Mission Statement</label>
                     <textarea
                       className="input-field resize-none"
                       rows={3}
@@ -180,23 +185,28 @@ export const ProfilePage: React.FC = () => {
               ) : (
                 <>
                   <div>
-                    <h2 className="text-2xl font-black text-white">{currentUser.name}</h2>
+                    <h2
+                      className="text-2xl font-bold text-white uppercase tracking-wide"
+                      style={{ fontFamily: 'var(--font-display)' }}
+                    >
+                      {currentUser.name}
+                    </h2>
                     {currentUser.bio ? (
                       <p className="text-sm mt-1 text-gray-300">{currentUser.bio}</p>
                     ) : (
-                      <p className="text-xs italic mt-1" style={{ color: 'var(--color-text-muted)' }}>No bio added yet. Click "Edit Profile" to add one.</p>
+                      <p className="text-xs italic mt-1 text-gray-500">No bio added yet. Click &quot;Edit Profile&quot; to configure.</p>
                     )}
                   </div>
 
-                  <div className="flex flex-wrap justify-center sm:justify-start gap-4 text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                  <div className="flex flex-wrap justify-center sm:justify-start gap-4 text-xs text-gray-400">
                     {currentUser.email && (
-                      <span className="flex items-center gap-1.5">
-                        <Mail size={13} /> {currentUser.email}
+                      <span className="flex items-center gap-1.5" style={{ fontFamily: 'var(--font-mono)' }}>
+                        <Mail size={13} className="text-[#00aaff]" /> {currentUser.email}
                       </span>
                     )}
                     {currentUser.dateOfBirth && (
-                      <span className="flex items-center gap-1.5">
-                        <Cake size={13} /> {formatDate(currentUser.dateOfBirth, 'MMM d, yyyy')}
+                      <span className="flex items-center gap-1.5" style={{ fontFamily: 'var(--font-mono)' }}>
+                        <Cake size={13} className="text-[#00aaff]" /> {formatDate(currentUser.dateOfBirth, 'MMM d, yyyy')}
                       </span>
                     )}
                   </div>
@@ -207,10 +217,10 @@ export const ProfilePage: React.FC = () => {
         </motion.div>
 
         {/* Interests Card */}
-        <motion.div variants={itemVariants} className="card p-5">
+        <motion.div variants={itemVariants} className="card p-5 border border-white/10 glass-strong">
           <div className="flex items-center gap-2 mb-4">
-            <Sparkles size={16} className="text-purple-400" />
-            <h2 className="section-title">Interests</h2>
+            <Sparkles size={15} className="text-[#00aaff]" />
+            <h2 className="section-title">Focus & Interests</h2>
           </div>
 
           <div className="flex flex-wrap gap-2 mb-3">
@@ -226,7 +236,7 @@ export const ProfilePage: React.FC = () => {
             ))}
 
             {(isEditing ? form.interests : (currentUser.interests || [])).length === 0 && (
-              <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+              <p className="text-xs text-gray-500">
                 {isEditing ? 'Add interests using the input below.' : 'No interests added yet.'}
               </p>
             )}
@@ -250,10 +260,10 @@ export const ProfilePage: React.FC = () => {
         </motion.div>
 
         {/* Skills Card */}
-        <motion.div variants={itemVariants} className="card p-5">
+        <motion.div variants={itemVariants} className="card p-5 border border-white/10 glass-strong">
           <div className="flex items-center gap-2 mb-4">
-            <Award size={16} className="text-amber-400" />
-            <h2 className="section-title">Skills</h2>
+            <Award size={15} className="text-amber-400" />
+            <h2 className="section-title">Capabilities & Skills</h2>
           </div>
 
           <div className="flex flex-wrap gap-2 mb-3">
@@ -269,7 +279,7 @@ export const ProfilePage: React.FC = () => {
             ))}
 
             {(isEditing ? form.skills : (currentUser.skills || [])).length === 0 && (
-              <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+              <p className="text-xs text-gray-500">
                 {isEditing ? 'Add skills using the input below.' : 'No skills added yet.'}
               </p>
             )}
@@ -293,16 +303,18 @@ export const ProfilePage: React.FC = () => {
         </motion.div>
 
         {/* Account Details Card */}
-        <motion.div variants={itemVariants} className="card p-5">
-          <h2 className="section-title mb-4">Account Information</h2>
+        <motion.div variants={itemVariants} className="card p-5 border border-white/10 glass-strong">
+          <h2 className="section-title mb-4">System Identity</h2>
           <div className="space-y-3">
             <div className="flex items-center justify-between py-2 border-b border-white/5">
-              <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Member Since</span>
-              <span className="text-xs font-semibold text-white">{formatDate(currentUser.createdAt || new Date().toISOString())}</span>
+              <span className="text-xs text-gray-400">Pilot Since</span>
+              <span className="text-xs font-semibold text-white" style={{ fontFamily: 'var(--font-mono)' }}>
+                {formatDate(currentUser.createdAt || new Date().toISOString())}
+              </span>
             </div>
             <div className="flex items-center justify-between py-2">
-              <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Firebase UID</span>
-              <span className="text-[11px] font-mono" style={{ color: 'var(--color-text-muted)' }}>
+              <span className="text-xs text-gray-400">Firebase System UID</span>
+              <span className="text-[11px]" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)' }}>
                 {currentUser.uid}
               </span>
             </div>

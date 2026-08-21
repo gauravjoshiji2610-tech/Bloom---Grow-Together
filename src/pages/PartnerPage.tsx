@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Flame, Trophy, Target, CheckCircle2, Clock, Calendar, ListTodo, Star, RefreshCw, X } from 'lucide-react';
+import { Flame, Trophy, Target, CheckCircle2, Clock, Calendar, ListTodo, Star, RefreshCw } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { Avatar } from '../components/Avatar';
 import { ProgressRing } from '../components/ProgressRing';
@@ -66,13 +66,13 @@ export const PartnerPage: React.FC = () => {
     }
   };
 
-  const partnerColor = !isGaurav ? '#8B5CF6' : '#EC4899';
+  const partnerColor = '#00aaff';
   const todayStr = new Date().toISOString().split('T')[0];
   const partnerTodayHabits = partnerHabits.filter(h => isScheduledOnDate(h, todayStr));
   const partnerTotalHabits = partnerHabits;
 
   if (isLoading && partnerHabits.length === 0) {
-    return <LoadingSpinner fullscreen label={`Loading ${partner?.name || 'partner'}'s data...`} />;
+    return <LoadingSpinner fullscreen label={`Connecting to ${partner?.name || 'partner'}'s cockpit...`} />;
   }
 
   return (
@@ -81,9 +81,12 @@ export const PartnerPage: React.FC = () => {
 
         {/* Header */}
         <motion.div variants={itemVariants}>
-          <h1 className="page-title mb-1">Partner Accountability</h1>
-          <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
-            Realtime habit progress with {partner?.name}
+          <h1 className="page-title mb-1">Co-Pilot Telemetry</h1>
+          <p
+            className="text-xs font-semibold tracking-wider uppercase"
+            style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)' }}
+          >
+            Realtime accountability sync with {partner?.name}
           </p>
         </motion.div>
 
@@ -92,24 +95,35 @@ export const PartnerPage: React.FC = () => {
           variants={itemVariants}
           className="relative overflow-hidden rounded-2xl p-6 border glass-strong"
           style={{
-            background: `linear-gradient(135deg, ${partnerColor}18 0%, rgba(24,24,36,0.95) 60%)`,
-            borderColor: `${partnerColor}30`,
+            background: 'linear-gradient(135deg, rgba(0, 102, 177, 0.28) 0%, rgba(14, 20, 30, 0.96) 60%)',
+            borderColor: 'rgba(0, 170, 255, 0.35)',
+            boxShadow: '0 10px 40px rgba(0, 0, 0, 0.7), 0 0 30px rgba(0, 102, 177, 0.2)',
           }}
         >
           <div
-            className="absolute top-0 right-0 w-72 h-72 rounded-full -translate-y-1/2 translate-x-1/2 opacity-10 pointer-events-none"
-            style={{ background: `radial-gradient(circle, ${partnerColor}, transparent)` }}
+            className="absolute top-0 right-0 w-72 h-72 rounded-full -translate-y-1/2 translate-x-1/2 opacity-15 pointer-events-none"
+            style={{ background: 'radial-gradient(circle, #00aaff, transparent)' }}
           />
 
           <div className="relative flex flex-col sm:flex-row items-center sm:items-start gap-6">
             <div className="flex flex-col items-center gap-3">
               <div className="relative">
                 <Avatar name={partner?.name || ''} src={partner?.avatar} size="2xl" isGaurav={!isGaurav} />
-                <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-[#181824] bg-emerald-500" />
+                <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-[#0e131c] bg-emerald-400 shadow-[0_0_8px_#10b981]" />
               </div>
               <div className="text-center">
-                <h2 className="text-2xl font-black text-white">{partner?.name}</h2>
-                <p className="text-xs max-w-xs" style={{ color: 'var(--color-text-secondary)' }}>{partner?.bio}</p>
+                <h2
+                  className="text-xl font-bold text-white uppercase tracking-wide"
+                  style={{ fontFamily: 'var(--font-display)' }}
+                >
+                  {partner?.name}
+                </h2>
+                <p
+                  className="text-xs max-w-xs"
+                  style={{ color: 'var(--color-text-secondary)' }}
+                >
+                  {partner?.bio}
+                </p>
               </div>
             </div>
 
@@ -118,8 +132,16 @@ export const PartnerPage: React.FC = () => {
                 <div className="text-center">
                   <ProgressRing percentage={partnerProgress.percentage} size={90} strokeWidth={7} color={partnerColor}>
                     <div>
-                      <div className="text-xl font-black text-white">{partnerProgress.percentage}%</div>
-                      <div className="text-[9px] uppercase tracking-wider font-semibold" style={{ color: 'var(--color-text-muted)' }}>
+                      <div
+                        className="text-xl font-black text-white"
+                        style={{ fontFamily: 'var(--font-mono)' }}
+                      >
+                        {partnerProgress.percentage}%
+                      </div>
+                      <div
+                        className="text-[9px] uppercase tracking-widest font-semibold text-[#00aaff]"
+                        style={{ fontFamily: 'var(--font-mono)' }}
+                      >
                         today
                       </div>
                     </div>
@@ -127,30 +149,30 @@ export const PartnerPage: React.FC = () => {
                 </div>
                 <div className="flex flex-col justify-center gap-2.5">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(245,158,11,0.15)' }}>
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center border border-amber-500/30" style={{ background: 'rgba(245,158,11,0.15)' }}>
                       <Flame size={15} style={{ color: '#F59E0B' }} />
                     </div>
                     <div>
-                      <p className="text-base font-black text-white">{partnerStreak} days</p>
-                      <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Current streak</p>
+                      <p className="text-base font-black text-white" style={{ fontFamily: 'var(--font-mono)' }}>{partnerStreak} days</p>
+                      <p className="text-[10px] uppercase font-bold tracking-wider" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)' }}>Current streak</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(16,185,129,0.15)' }}>
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center border border-emerald-500/30" style={{ background: 'rgba(16,185,129,0.15)' }}>
                       <Trophy size={15} style={{ color: '#10B981' }} />
                     </div>
                     <div>
-                      <p className="text-base font-black text-white">{partnerLongestStreak} days</p>
-                      <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Best streak</p>
+                      <p className="text-base font-black text-white" style={{ fontFamily: 'var(--font-mono)' }}>{partnerLongestStreak} days</p>
+                      <p className="text-[10px] uppercase font-bold tracking-wider" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)' }}>Best streak</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(139,92,246,0.15)' }}>
-                      <Target size={15} style={{ color: '#8B5CF6' }} />
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center border border-[#00aaff]/30" style={{ background: 'rgba(0,102,177,0.2)' }}>
+                      <Target size={15} style={{ color: '#00aaff' }} />
                     </div>
                     <div>
-                      <p className="text-base font-black text-white">{partnerProgress.completed}/{partnerProgress.total}</p>
-                      <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Done today</p>
+                      <p className="text-base font-black text-white" style={{ fontFamily: 'var(--font-mono)' }}>{partnerProgress.completed}/{partnerProgress.total}</p>
+                      <p className="text-[10px] uppercase font-bold tracking-wider" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)' }}>Done today</p>
                     </div>
                   </div>
                 </div>
@@ -163,7 +185,7 @@ export const PartnerPage: React.FC = () => {
         <motion.div variants={itemVariants} className="space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="section-title flex items-center gap-2">
-              <Calendar size={18} className="text-purple-400" />
+              <Calendar size={17} className="text-[#00aaff]" />
               {partner?.name}&apos;s Habits Today ({partnerTodayHabits.length})
             </h2>
             {partnerTodayHabits.length > 0 && (
@@ -195,8 +217,10 @@ export const PartnerPage: React.FC = () => {
                     whileHover={{ y: -2 }}
                     className="card p-4 cursor-pointer card-hover border relative flex flex-col justify-between"
                     style={{
-                      borderColor: isDone ? `${habit.color}40` : undefined,
-                      background: isDone ? `linear-gradient(135deg, ${habit.color}08, #1A1A2E)` : undefined,
+                      borderColor: isDone ? `${habit.color}45` : 'rgba(255, 255, 255, 0.09)',
+                      background: isDone
+                        ? `linear-gradient(135deg, ${habit.color}10 0%, rgba(14, 20, 30, 0.95) 100%)`
+                        : 'rgba(18, 24, 34, 0.86)',
                     }}
                     onClick={() => setSelectedHabitForDetail(habit)}
                   >
@@ -204,26 +228,39 @@ export const PartnerPage: React.FC = () => {
                       <div className="flex items-start gap-3">
                         <div
                           className="w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0"
-                          style={{ background: `${habit.color}20`, border: `1px solid ${habit.color}30` }}
+                          style={{
+                            background: `${habit.color}25`,
+                            border: `1px solid ${habit.color}45`,
+                            boxShadow: `0 0 12px ${habit.color}25`,
+                          }}
                         >
                           {habit.icon}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5">
-                            <p className={`text-sm font-bold truncate ${isDone ? 'line-through opacity-60 text-gray-300' : 'text-white'}`}>
+                            <p
+                              className={`text-sm font-bold truncate ${isDone ? 'line-through opacity-60 text-gray-300' : 'text-white'}`}
+                              style={{ fontFamily: 'var(--font-display)' }}
+                            >
                               {habit.name}
                             </p>
                             {habit.priority === 'high' && (
-                              <Star size={12} fill="#EF4444" style={{ color: '#EF4444', flexShrink: 0 }} />
+                              <Star size={12} fill="#e10600" style={{ color: '#e10600', flexShrink: 0 }} />
                             )}
                           </div>
                           <div className="flex flex-wrap items-center gap-2 mt-1">
                             <span className="badge badge-purple text-[10px]">{getCategoryLabel(habit.category)}</span>
-                            <span className="flex items-center gap-1 text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
+                            <span
+                              className="flex items-center gap-1 text-[11px]"
+                              style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)' }}
+                            >
                               <Clock size={11} />
                               {habit.time}
                             </span>
-                            <span className="flex items-center gap-1 text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
+                            <span
+                              className="flex items-center gap-1 text-[11px]"
+                              style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)' }}
+                            >
                               {habit.recurrence?.enabled && habit.recurrence.interval > 1 && <RefreshCw size={10} />}
                               {scheduleText}
                             </span>
@@ -232,7 +269,11 @@ export const PartnerPage: React.FC = () => {
                         <div className="flex items-center gap-2 flex-shrink-0">
                           <StreakBadge streak={habit.streak} size="sm" />
                           {isDone ? (
-                            <CheckCircle2 size={22} style={{ color: habit.color }} fill={habit.color} />
+                            <CheckCircle2
+                              size={22}
+                              style={{ color: habit.color, filter: `drop-shadow(0 0 6px ${habit.color}80)` }}
+                              fill={habit.color}
+                            />
                           ) : (
                             <Clock size={20} style={{ color: 'var(--color-text-muted)' }} />
                           )}
@@ -250,9 +291,17 @@ export const PartnerPage: React.FC = () => {
               })}
             </div>
           ) : (
-            <div className="card p-6 text-center border border-white/5">
-              <p className="text-sm font-semibold text-white mb-1">No habits scheduled for {partner?.name} today</p>
-              <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+            <div className="card p-6 text-center border border-white/10 glass">
+              <p
+                className="text-sm font-semibold text-white mb-1 uppercase tracking-wider"
+                style={{ fontFamily: 'var(--font-display)' }}
+              >
+                No habits scheduled for {partner?.name} today
+              </p>
+              <p
+                className="text-xs"
+                style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)' }}
+              >
                 {partner?.name} has no commitments scheduled on this date.
               </p>
             </div>
@@ -263,7 +312,7 @@ export const PartnerPage: React.FC = () => {
         <motion.div variants={itemVariants} className="space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="section-title flex items-center gap-2">
-              <ListTodo size={18} className="text-purple-400" />
+              <ListTodo size={17} className="text-[#00aaff]" />
               Total Active Habits ({partnerTotalHabits.length})
             </h2>
           </div>
@@ -294,24 +343,39 @@ export const PartnerPage: React.FC = () => {
                       <div className="flex items-start gap-3">
                         <div
                           className="w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0"
-                          style={{ background: `${habit.color}20`, border: `1px solid ${habit.color}30` }}
+                          style={{
+                            background: `${habit.color}25`,
+                            border: `1px solid ${habit.color}45`,
+                            boxShadow: `0 0 12px ${habit.color}25`,
+                          }}
                         >
                           {habit.icon}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5">
-                            <p className="text-sm font-bold text-white truncate">{habit.name}</p>
+                            <p
+                              className="text-sm font-bold text-white truncate"
+                              style={{ fontFamily: 'var(--font-display)' }}
+                            >
+                              {habit.name}
+                            </p>
                             {habit.priority === 'high' && (
-                              <Star size={12} fill="#EF4444" style={{ color: '#EF4444', flexShrink: 0 }} />
+                              <Star size={12} fill="#e10600" style={{ color: '#e10600', flexShrink: 0 }} />
                             )}
                           </div>
                           <div className="flex flex-wrap items-center gap-2 mt-1">
                             <span className="badge badge-purple text-[10px]">{getCategoryLabel(habit.category)}</span>
-                            <span className="flex items-center gap-1 text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
+                            <span
+                              className="flex items-center gap-1 text-[11px]"
+                              style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)' }}
+                            >
                               <Clock size={11} />
                               {habit.time}
                             </span>
-                            <span className="flex items-center gap-1 text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
+                            <span
+                              className="flex items-center gap-1 text-[11px]"
+                              style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)' }}
+                            >
                               {habit.recurrence?.enabled && habit.recurrence.interval > 1 && <RefreshCw size={10} />}
                               {scheduleText}
                             </span>
@@ -333,9 +397,17 @@ export const PartnerPage: React.FC = () => {
               })}
             </div>
           ) : (
-            <div className="card p-8 text-center border border-white/5">
-              <p className="text-sm font-semibold text-white mb-1">No active habits yet</p>
-              <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+            <div className="card p-8 text-center border border-white/10 glass">
+              <p
+                className="text-sm font-semibold text-white mb-1 uppercase tracking-wider"
+                style={{ fontFamily: 'var(--font-display)' }}
+              >
+                No active habits yet
+              </p>
+              <p
+                className="text-xs"
+                style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)' }}
+              >
                 When {partner?.name} creates habits in Firestore, they will automatically sync here.
               </p>
             </div>
@@ -348,31 +420,40 @@ export const PartnerPage: React.FC = () => {
       <Modal
         isOpen={!!selectedHabitForDetail}
         onClose={() => setSelectedHabitForDetail(null)}
-        title={`${partner?.name || 'Partner'}'s Habit Details`}
+        title={`${partner?.name || 'Partner'}'s Habit Specification`}
       >
         {selectedHabitForDetail && (
           <div className="space-y-4">
             {/* Header with Icon & Name */}
             <div className="flex items-start gap-3.5">
               <div
-                className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0"
+                className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0 border"
                 style={{
-                  background: `${selectedHabitForDetail.color}20`,
-                  border: `1px solid ${selectedHabitForDetail.color}40`,
+                  background: `${selectedHabitForDetail.color}25`,
+                  borderColor: `${selectedHabitForDetail.color}50`,
+                  boxShadow: `0 0 16px ${selectedHabitForDetail.color}35`,
                 }}
               >
                 {selectedHabitForDetail.icon}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <h3 className="text-lg font-bold text-white truncate">{selectedHabitForDetail.name}</h3>
+                  <h3
+                    className="text-lg font-bold text-white truncate"
+                    style={{ fontFamily: 'var(--font-display)' }}
+                  >
+                    {selectedHabitForDetail.name}
+                  </h3>
                   {selectedHabitForDetail.priority === 'high' && (
-                    <Star size={14} fill="#EF4444" style={{ color: '#EF4444', flexShrink: 0 }} />
+                    <Star size={14} fill="#e10600" style={{ color: '#e10600', flexShrink: 0 }} />
                   )}
                 </div>
                 <div className="flex flex-wrap items-center gap-2 mt-1">
                   <span className="badge badge-purple">{getCategoryLabel(selectedHabitForDetail.category)}</span>
-                  <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                  <span
+                    className="flex items-center gap-1 text-xs"
+                    style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)' }}
+                  >
                     <Clock size={12} />
                     {selectedHabitForDetail.time}
                   </span>
@@ -383,10 +464,18 @@ export const PartnerPage: React.FC = () => {
 
             {/* Recurrence schedule summary */}
             <div className="p-3 rounded-xl border border-white/10 glass text-xs flex items-center justify-between">
-              <span style={{ color: 'var(--color-text-secondary)' }}>Schedule</span>
-              <span className="font-medium text-white flex items-center gap-1.5">
+              <span
+                className="uppercase tracking-wider font-semibold"
+                style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)' }}
+              >
+                Schedule
+              </span>
+              <span
+                className="font-medium text-white flex items-center gap-1.5"
+                style={{ fontFamily: 'var(--font-mono)' }}
+              >
                 {selectedHabitForDetail.recurrence?.enabled && selectedHabitForDetail.recurrence.interval > 1 && (
-                  <RefreshCw size={11} className="text-purple-400" />
+                  <RefreshCw size={11} className="text-[#00aaff]" />
                 )}
                 {(() => {
                   const h = selectedHabitForDetail;
@@ -406,11 +495,14 @@ export const PartnerPage: React.FC = () => {
             {/* Complete Description with multiline + LinkifiedText */}
             {selectedHabitForDetail.description ? (
               <div className="p-3.5 rounded-xl border border-white/10 glass space-y-1.5">
-                <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>
-                  Description
+                <p
+                  className="text-[10px] font-bold uppercase tracking-widest text-[#00aaff]"
+                  style={{ fontFamily: 'var(--font-mono)' }}
+                >
+                  Description & Links
                 </p>
                 <div
-                  className="text-sm text-gray-300 leading-relaxed break-words"
+                  className="text-sm text-gray-200 leading-relaxed break-words"
                   style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
                 >
                   <LinkifiedText text={selectedHabitForDetail.description} />
@@ -425,7 +517,12 @@ export const PartnerPage: React.FC = () => {
             {/* Goal if present */}
             {selectedHabitForDetail.goal && (
               <div className="p-3 rounded-xl border border-white/5 glass text-xs flex items-center justify-between">
-                <span style={{ color: 'var(--color-text-muted)' }}>Goal</span>
+                <span
+                  className="uppercase tracking-wider font-semibold"
+                  style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)' }}
+                >
+                  Target Goal
+                </span>
                 <span className="text-gray-300 font-medium">{selectedHabitForDetail.goal}</span>
               </div>
             )}
@@ -434,7 +531,7 @@ export const PartnerPage: React.FC = () => {
             <div className="flex items-center justify-end pt-2 border-t border-white/10">
               <button
                 type="button"
-                className="btn-secondary"
+                className="btn-secondary text-xs"
                 onClick={() => setSelectedHabitForDetail(null)}
               >
                 Close

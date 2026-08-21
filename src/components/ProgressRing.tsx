@@ -14,8 +14,8 @@ export const ProgressRing: React.FC<ProgressRingProps> = ({
   percentage,
   size = 120,
   strokeWidth = 8,
-  color = '#7C3AED',
-  trackColor = 'rgba(255,255,255,0.06)',
+  color = '#00aaff',
+  trackColor = 'rgba(255,255,255,0.08)',
   children,
   className,
 }) => {
@@ -44,7 +44,10 @@ export const ProgressRing: React.FC<ProgressRingProps> = ({
           strokeLinecap="round"
           strokeDasharray={circumference}
           strokeDashoffset={offset}
-          style={{ transition: 'stroke-dashoffset 0.8s cubic-bezier(0.34,1.56,0.64,1)' }}
+          style={{
+            transition: 'stroke-dashoffset 0.8s cubic-bezier(0.16, 1, 0.3, 1)',
+            filter: `drop-shadow(0 0 6px ${color}60)`,
+          }}
         />
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">

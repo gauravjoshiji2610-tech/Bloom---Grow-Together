@@ -16,7 +16,7 @@ import { LoadingSpinner } from './components/LoadingSpinner';
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuthStore();
 
-  if (isLoading) return <LoadingSpinner fullscreen label="Loading Bloom..." />;
+  if (isLoading) return <LoadingSpinner fullscreen label="Initializing BOOM Cockpit..." />;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   return <>{children}</>;
 };
@@ -24,7 +24,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 const PublicOnlyRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuthStore();
 
-  if (isLoading) return <LoadingSpinner fullscreen label="Loading Bloom..." />;
+  if (isLoading) return <LoadingSpinner fullscreen label="Initializing BOOM Cockpit..." />;
   if (isAuthenticated) return <Navigate to="/" replace />;
   return <>{children}</>;
 };

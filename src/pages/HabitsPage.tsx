@@ -40,7 +40,7 @@ const defaultForm = (userId: string): Omit<Habit, 'id' | 'createdAt' | 'updatedA
   description: '',
   category: 'health' as HabitCategory,
   icon: '💪',
-  color: '#8B5CF6',
+  color: '#00aaff',
   repeatType: 'daily' as RepeatType,
   selectedDays: [0,1,2,3,4,5,6],
   time: '08:00',
@@ -100,7 +100,6 @@ export const HabitsPage: React.FC = () => {
     loadHabits(currentUser.uid);
     loadRequests(currentUser.uid, partnerId);
 
-    // Realtime subscription for incoming shared habit requests
     const unsubRequests = habitService.subscribeHabitRequests(currentUser.uid, (reqs) => {
       setReceivedRequests(reqs);
     });
@@ -117,7 +116,6 @@ export const HabitsPage: React.FC = () => {
     }
   }, [searchParams]);
 
-  // Helper to update nested recurrence fields without losing other form values
   const updateRecurrence = (updates: Partial<HabitRecurrence>) => {
     setForm(f => ({
       ...f,
@@ -154,71 +152,17 @@ export const HabitsPage: React.FC = () => {
       reminderEnabled: habit.reminderEnabled,
       reminderTime: habit.reminderTime,
       isArchived: habit.isArchived,
-      // Load existing recurrence, or create a safe default for old habits
       recurrence: habit.recurrence ?? {
-        enabled: false,
-        frequency: 'daily',
+        enabled: habit.repeatType === 'daily',
+        frequency: habit.repeatType === 'daily' ? 'daily' : 'weekly',
         interval: 1,
-        weekDays: habit.selectedDays?.length > 0 ? [...habit.selectedDays] : [0,1,2,3,4,5,6],
-        monthDay: new Date().getDate(),
+        weekDays: habit.selectedDays ?? [0,1,2,3,4,5,6],
+        monthDay: 1,
         endDate: null,
-        startDate: habit.createdAt.split('T')[0],
+        startDate: habit.createdAt?.split('T')[0] ?? todayDateStr(),
       },
     });
     setFormOpen(true);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.name.trim() || !currentUser) {
-      toast.error('Habit name is required');
-      return;
-    }
-    setIsSubmitting(true);
-    try {
-      if (editingHabit) {
-        await updateHabit(editingHabit.id, form);
-        toast.success('Habit updated! ✨');
-      } else {
-        await createHabit({ ...form, userId: currentUser.uid });
-        if (shareWithPartner) {
-          await shareHabit(currentUser.uid, myName, partnerId, partnerName, form);
-          toast.success(`Habit created & shared with ${partnerName}! 🌸`);
-        } else {
-          toast.success('Habit created! 🌱');
-        }
-      }
-      setFormOpen(false);
-    } catch {
-      toast.error('Failed to save habit');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleAccept = async (req: SharedHabitRequest) => {
-    if (!currentUser) return;
-    setProcessingRequestId(req.id);
-    try {
-      await acceptRequest(req, currentUser.uid);
-      toast.success(`"${req.habitData.name}" added to your habits! 🌱`);
-    } catch {
-      toast.error('Failed to accept shared habit');
-    } finally {
-      setProcessingRequestId(null);
-    }
-  };
-
-  const handleDecline = async (req: SharedHabitRequest) => {
-    setProcessingRequestId(req.id);
-    try {
-      await declineRequest(req);
-      toast('Shared habit request declined');
-    } catch {
-      toast.error('Failed to decline request');
-    } finally {
-      setProcessingRequestId(null);
-    }
   };
 
   const handleComplete = async (id: string) => {
@@ -228,7 +172,7 @@ export const HabitsPage: React.FC = () => {
       await completeHabit(id, currentUser.uid);
       toast.success('Habit completed! 🔥');
     } catch {
-      toast.error('Failed to mark complete');
+      toast.error('Failed to complete habit');
     } finally {
       setCompletingId(null);
     }
@@ -238,16 +182,16 @@ export const HabitsPage: React.FC = () => {
     if (!currentUser) return;
     try {
       await undoCompletion(id, currentUser.uid);
-      toast('Completion undone');
+      toast.success('Habit undone');
     } catch {
-      toast.error('Failed to undo completion');
+      toast.error('Failed to undo');
     }
   };
 
   const handleArchive = async (id: string) => {
     try {
       await archiveHabit(id);
-      toast('Habit archived 📦');
+      toast.success('Habit archived');
     } catch {
       toast.error('Failed to archive habit');
     }
@@ -256,7 +200,7 @@ export const HabitsPage: React.FC = () => {
   const handleRestore = async (id: string) => {
     try {
       await restoreHabit(id);
-      toast.success('Habit restored! ♻️');
+      toast.success('Habit restored');
     } catch {
       toast.error('Failed to restore habit');
     }
@@ -273,30 +217,96 @@ export const HabitsPage: React.FC = () => {
     }
   };
 
-  const filteredHabits = habits.filter(habit => {
-    if (showArchived ? !habit.isArchived : habit.isArchived) return false;
-    if (search && !habit.name.toLowerCase().includes(search.toLowerCase()) && !habit.description.toLowerCase().includes(search.toLowerCase())) {
-      return false;
+  const handleAccept = async (request: SharedHabitRequest) => {
+    if (!currentUser) return;
+    setProcessingRequestId(request.id);
+    try {
+      await acceptRequest(request, currentUser.uid);
+      toast.success(`Accepted "${request.habitData.name}"! Added to your habits.`);
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to accept habit');
+    } finally {
+      setProcessingRequestId(null);
     }
-    if (filterCategory !== 'all' && habit.category !== filterCategory) return false;
-    return true;
-  });
+  };
 
-  // Used only for the legacy (Repeat OFF) day picker
+  const handleDecline = async (request: SharedHabitRequest) => {
+    if (!currentUser) return;
+    setProcessingRequestId(request.id);
+    try {
+      await declineRequest(request);
+      toast.success(`Declined "${request.habitData.name}"`);
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to decline habit');
+    } finally {
+      setProcessingRequestId(null);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentUser) return;
+    setIsSubmitting(true);
+
+    try {
+      const rec = form.recurrence ?? defaultRecurrence();
+      const legacyRepeatType: RepeatType = rec.enabled
+        ? (rec.frequency === 'daily' ? 'daily' : rec.frequency === 'weekly' ? 'weekly' : 'custom')
+        : form.repeatType;
+
+      const legacySelectedDays: number[] = rec.enabled
+        ? (rec.frequency === 'daily' ? [0,1,2,3,4,5,6] : rec.frequency === 'weekly' ? rec.weekDays : [rec.monthDay % 7])
+        : form.selectedDays;
+
+      const payload = {
+        ...form,
+        userId: currentUser.uid,
+        repeatType: legacyRepeatType,
+        selectedDays: legacySelectedDays,
+        recurrence: rec,
+      };
+
+      if (editingHabit) {
+        await updateHabit(editingHabit.id, payload);
+        toast.success('Habit updated!');
+      } else {
+        await createHabit(payload);
+        toast.success('Habit created!');
+
+        if (shareWithPartner) {
+          try {
+            await shareHabit(currentUser.uid, myName, partnerId, partnerName, payload);
+            toast.success(`Share request sent to ${partnerName}! 🌸`);
+          } catch (shareErr: any) {
+            console.error('Auto-share error:', shareErr);
+            toast.error(`Habit created, but could not share with ${partnerName}: ${shareErr?.message || ''}`);
+          }
+        }
+      }
+      setFormOpen(false);
+    } catch {
+      toast.error('Failed to save habit');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const toggleLegacyDay = (day: number) => {
     setForm(f => {
-      const selectedDays = f.selectedDays.includes(day)
-        ? f.selectedDays.filter(d => d !== day)
-        : [...f.selectedDays, day].sort();
-      return { ...f, selectedDays };
+      const exists = f.selectedDays.includes(day);
+      const next = exists ? f.selectedDays.filter(d => d !== day) : [...f.selectedDays, day].sort();
+      return { ...f, selectedDays: next };
     });
   };
 
-  // Convenient aliases for the current recurrence state
-  const rec = form.recurrence!;
+  const filteredHabits = habits
+    .filter(h => showArchived ? h.isArchived : !h.isArchived)
+    .filter(h => filterCategory === 'all' || h.category === filterCategory)
+    .filter(h => h.name.toLowerCase().includes(search.toLowerCase()) || h.description.toLowerCase().includes(search.toLowerCase()));
+
+  const rec = form.recurrence ?? defaultRecurrence();
   const recEnabled = rec.enabled;
 
-  // Human-readable summary shown in the toggle header
   const recurrenceSummary = (() => {
     if (!recEnabled) return 'No repeat cycle';
     const { frequency, interval } = rec;
@@ -313,9 +323,12 @@ export const HabitsPage: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="page-title mb-1">Habits</h1>
-          <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
-            {showArchived ? 'Archived habits' : 'Your active habit commitments'}
+          <h1 className="page-title mb-1">Habit Registry</h1>
+          <p
+            className="text-xs font-semibold tracking-wider uppercase"
+            style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)' }}
+          >
+            {showArchived ? 'Archived Commitments' : 'Active Habit Specifications'}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -324,7 +337,7 @@ export const HabitsPage: React.FC = () => {
               className="btn-secondary text-xs"
               onClick={() => setShowSentRequests(!showSentRequests)}
             >
-              <Send size={14} />
+              <Send size={13} />
               <span className="hidden sm:inline">Sent Shares</span> ({sentRequests.length})
             </button>
           )}
@@ -332,11 +345,11 @@ export const HabitsPage: React.FC = () => {
             className="btn-secondary text-xs"
             onClick={() => setShowArchived(!showArchived)}
           >
-            <Archive size={14} />
+            <Archive size={13} />
             {showArchived ? 'Show Active' : 'Archived'}
           </button>
           <button className="btn-primary" onClick={openNewForm}>
-            <Plus size={16} />
+            <Plus size={15} />
             <span className="hidden sm:inline">New Habit</span>
           </button>
         </div>
@@ -350,8 +363,11 @@ export const HabitsPage: React.FC = () => {
           className="space-y-3"
         >
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold text-purple-300 flex items-center gap-2">
-              <Sparkles size={16} className="text-purple-400" />
+            <h2
+              className="text-xs font-bold text-[#00aaff] flex items-center gap-2 uppercase tracking-wider"
+              style={{ fontFamily: 'var(--font-mono)' }}
+            >
+              <Sparkles size={14} className="text-[#00aaff]" />
               Shared with You ({pendingReceivedRequests.length})
             </h2>
           </div>
@@ -374,50 +390,63 @@ export const HabitsPage: React.FC = () => {
               return (
                 <div
                   key={req.id}
-                  className="card p-4 border border-purple-500/40 relative overflow-hidden"
-                  style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.12), rgba(24,24,36,0.95))' }}
+                  className="card p-4 border border-[#00aaff]/40 relative overflow-hidden glass-strong"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(0, 102, 177, 0.22) 0%, rgba(14, 20, 30, 0.96) 60%)',
+                    boxShadow: '0 8px 30px rgba(0, 102, 177, 0.25)',
+                  }}
                 >
-                  {/* Badge: Shared by {senderName} */}
                   <div className="flex items-center justify-between gap-2 mb-3">
-                    <span className="badge badge-purple text-[11px] font-semibold flex items-center gap-1.5">
+                    <span className="badge badge-purple text-[10px] font-semibold flex items-center gap-1.5">
                       <Share2 size={11} />
                       Shared by {req.senderName}
                     </span>
-                    <span className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
+                    <span
+                      className="text-[10px]"
+                      style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)' }}
+                    >
                       {formatRelativeTime(req.createdAt)}
                     </span>
                   </div>
 
-                  {/* Habit info */}
                   <div className="flex items-start gap-3 mb-2">
                     <div
                       className="w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0"
-                      style={{ background: `${habitData.color}20`, border: `1px solid ${habitData.color}40` }}
+                      style={{ background: `${habitData.color}25`, border: `1px solid ${habitData.color}50` }}
                     >
                       {habitData.icon}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-bold text-white text-base truncate">{habitData.name}</h3>
+                      <h3
+                        className="font-bold text-white text-base truncate"
+                        style={{ fontFamily: 'var(--font-display)' }}
+                      >
+                        {habitData.name}
+                      </h3>
                       {habitData.description && (
                         <ExpandableDescription description={habitData.description} className="mt-1" />
                       )}
                     </div>
                   </div>
 
-                  {/* Habit tags */}
                   <div className="flex flex-wrap items-center gap-2 mb-4">
                     <span className="badge badge-purple">{getCategoryLabel(habitData.category)}</span>
-                    <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                    <span
+                      className="flex items-center gap-1 text-[11px]"
+                      style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)' }}
+                    >
                       <Clock size={11} />
                       {habitData.time}
                     </span>
-                    <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                    <span
+                      className="flex items-center gap-1 text-[11px]"
+                      style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)' }}
+                    >
                       {habitData.recurrence?.enabled && habitData.recurrence.interval > 1 && <RefreshCw size={10} />}
                       {scheduleText}
                     </span>
                   </div>
 
-                  {/* Action buttons */}
                   <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/5">
                     <button
                       type="button"
@@ -445,7 +474,7 @@ export const HabitsPage: React.FC = () => {
         </motion.div>
       )}
 
-      {/* ── SENT SHARES STATUS DRAWER / SECTION ────────────── */}
+      {/* ── SENT SHARES STATUS DRAWER ─────────────────────── */}
       {showSentRequests && sentRequests.length > 0 && (
         <motion.div
           initial={{ opacity: 0, height: 0 }}
@@ -453,8 +482,11 @@ export const HabitsPage: React.FC = () => {
           className="card p-4 space-y-3 border border-white/10"
         >
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <Send size={14} className="text-purple-400" />
+            <h3
+              className="text-xs font-bold text-white flex items-center gap-2 uppercase tracking-wider"
+              style={{ fontFamily: 'var(--font-mono)' }}
+            >
+              <Send size={13} className="text-[#00aaff]" />
               Shared Habits Sent to {partnerName}
             </h3>
             <button
@@ -491,7 +523,10 @@ export const HabitsPage: React.FC = () => {
                       Declined
                     </span>
                   )}
-                  <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
+                  <span
+                    className="text-[10px]"
+                    style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)' }}
+                  >
                     {formatRelativeTime(req.createdAt)}
                   </span>
                 </div>
@@ -504,7 +539,7 @@ export const HabitsPage: React.FC = () => {
       {/* Filter toolbar */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-text-muted)' }} />
+          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500" />
           <input
             type="text"
             placeholder="Search habits..."
@@ -533,7 +568,7 @@ export const HabitsPage: React.FC = () => {
 
       {/* Habit List */}
       {isLoading ? (
-        <LoadingSpinner label="Loading habits..." />
+        <LoadingSpinner label="Loading habit telemetry..." />
       ) : (
         <AnimatePresence mode="popLayout">
           {filteredHabits.length > 0 ? (
@@ -554,7 +589,7 @@ export const HabitsPage: React.FC = () => {
             </div>
           ) : (
             <EmptyState
-              icon={showArchived ? '📦' : '🌱'}
+              icon={showArchived ? '📦' : '🏁'}
               title={showArchived ? 'No archived habits' : 'No habits found'}
               description={showArchived ? 'Archived habits will appear here.' : search ? 'Try adjusting your search query.' : 'Create your first habit to start building consistency.'}
               action={!showArchived ? { label: 'Create Habit', onClick: openNewForm } : undefined}
@@ -567,7 +602,7 @@ export const HabitsPage: React.FC = () => {
       <Modal
         isOpen={formOpen}
         onClose={() => setFormOpen(false)}
-        title={editingHabit ? 'Edit Habit' : 'Create New Habit'}
+        title={editingHabit ? 'Edit Habit Specification' : 'Create New Habit Specification'}
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Name */}
@@ -584,7 +619,12 @@ export const HabitsPage: React.FC = () => {
           <div>
             <div className="flex items-center justify-between mb-1">
               <label className="label mb-0">Description</label>
-              <span className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>Multiline & URLs supported</span>
+              <span
+                className="text-[10px] font-semibold uppercase tracking-wider text-[#00aaff]"
+                style={{ fontFamily: 'var(--font-mono)' }}
+              >
+                Multiline & URLs supported
+              </span>
             </div>
             <textarea
               rows={3}
@@ -625,13 +665,13 @@ export const HabitsPage: React.FC = () => {
 
           {/* Icon picker */}
           <div>
-            <label className="label">Icon</label>
+            <label className="label">Icon Symbol</label>
             <div className="flex flex-wrap gap-2 p-3 rounded-xl border border-white/10 glass">
               {HABIT_ICONS.map(icon => (
                 <button
                   key={icon} type="button"
                   className="w-9 h-9 rounded-lg text-lg flex items-center justify-center transition-all"
-                  style={form.icon === icon ? { background: 'rgba(139,92,246,0.3)', border: '1px solid #8B5CF6' } : {}}
+                  style={form.icon === icon ? { background: 'rgba(0,102,177,0.3)', border: '1px solid #00aaff' } : {}}
                   onClick={() => setForm(f => ({ ...f, icon }))}
                 >
                   {icon}
@@ -657,16 +697,19 @@ export const HabitsPage: React.FC = () => {
 
           {/* ── REPEAT SECTION ─────────────────────────────── */}
           <div>
-            {/* Toggle header row */}
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2.5">
-                <RefreshCw size={15} style={{ color: recEnabled ? '#8B5CF6' : 'var(--color-text-muted)' }} />
+                <RefreshCw size={14} style={{ color: recEnabled ? '#00aaff' : 'var(--color-text-muted)' }} />
                 <div>
-                  <p className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>Repeat</p>
-                  <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{recurrenceSummary}</p>
+                  <p className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>Repeat Cycle</p>
+                  <p
+                    className="text-[11px]"
+                    style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)' }}
+                  >
+                    {recurrenceSummary}
+                  </p>
                 </div>
               </div>
-              {/* Pill toggle */}
               <button
                 type="button"
                 id="repeat-toggle"
@@ -674,7 +717,7 @@ export const HabitsPage: React.FC = () => {
                 className="relative flex-shrink-0 rounded-full transition-colors duration-200"
                 style={{
                   width: 44, height: 24,
-                  background: recEnabled ? '#8B5CF6' : 'rgba(255,255,255,0.12)',
+                  background: recEnabled ? '#0066b1' : 'rgba(255,255,255,0.12)',
                 }}
                 aria-label="Toggle repeat"
               >
@@ -685,14 +728,13 @@ export const HabitsPage: React.FC = () => {
               </button>
             </div>
 
-            {/* ── Repeat ON: new recurrence controls ── */}
+            {/* Repeat ON Controls */}
             {recEnabled && (
               <motion.div
                 initial={{ opacity: 0, y: -6 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="space-y-4 p-4 rounded-xl border border-white/10 glass"
               >
-                {/* Frequency tabs */}
                 <div
                   className="flex gap-1 p-1 rounded-xl"
                   style={{ background: 'rgba(255,255,255,0.05)' }}
@@ -701,30 +743,27 @@ export const HabitsPage: React.FC = () => {
                     <button
                       key={freq}
                       type="button"
-                      className="flex-1 py-2 rounded-lg text-xs font-bold transition-all"
+                      className="flex-1 py-2 rounded-lg text-xs font-bold transition-all uppercase tracking-wider"
                       style={rec.frequency === freq
-                        ? { background: '#8B5CF6', color: 'white' }
-                        : { color: 'var(--color-text-muted)', background: 'transparent' }
+                        ? { background: 'linear-gradient(135deg, #1c69d4 0%, #005599 100%)', color: 'white', border: '1px solid rgba(0,170,255,0.5)', fontFamily: 'var(--font-display)' }
+                        : { color: 'var(--color-text-muted)', background: 'transparent', fontFamily: 'var(--font-display)' }
                       }
                       onClick={() => updateRecurrence({ frequency: freq, interval: 1 })}
                     >
-                      {freq.charAt(0).toUpperCase() + freq.slice(1)}
+                      {freq}
                     </button>
                   ))}
                 </div>
 
-                {/* ─ Daily: interval dropdown ─ */}
                 {rec.frequency === 'daily' && (
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium" style={{ color: 'var(--color-text-secondary)' }}>
-                      Interval
-                    </span>
+                    <span className="text-sm font-medium text-gray-300">Interval</span>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Every</span>
+                      <span className="text-xs text-gray-400">Every</span>
                       <select
                         id="daily-interval"
                         className="input-field py-1.5 text-sm text-center"
-                        style={{ width: 72 }}
+                        style={{ width: 72, fontFamily: 'var(--font-mono)' }}
                         value={rec.interval}
                         onChange={e => updateRecurrence({ interval: parseInt(e.target.value) })}
                       >
@@ -732,26 +771,23 @@ export const HabitsPage: React.FC = () => {
                           <option key={n} value={n}>{n}</option>
                         ))}
                       </select>
-                      <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                      <span className="text-xs text-gray-400">
                         {rec.interval === 1 ? 'day' : 'days'}
                       </span>
                     </div>
                   </div>
                 )}
 
-                {/* ─ Weekly: interval + day picker ─ */}
                 {rec.frequency === 'weekly' && (
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium" style={{ color: 'var(--color-text-secondary)' }}>
-                        Interval
-                      </span>
+                      <span className="text-sm font-medium text-gray-300">Interval</span>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Every</span>
+                        <span className="text-xs text-gray-400">Every</span>
                         <select
                           id="weekly-interval"
                           className="input-field py-1.5 text-sm text-center"
-                          style={{ width: 72 }}
+                          style={{ width: 72, fontFamily: 'var(--font-mono)' }}
                           value={rec.interval}
                           onChange={e => updateRecurrence({ interval: parseInt(e.target.value) })}
                         >
@@ -759,29 +795,26 @@ export const HabitsPage: React.FC = () => {
                             <option key={n} value={n}>{n}</option>
                           ))}
                         </select>
-                        <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                        <span className="text-xs text-gray-400">
                           {rec.interval === 1 ? 'week' : 'weeks'}
                         </span>
                       </div>
                     </div>
                     <div>
-                      <p className="text-xs font-medium mb-2" style={{ color: 'var(--color-text-muted)' }}>
-                        On these days
-                      </p>
+                      <p className="text-xs font-medium mb-2 text-gray-400">Active Days</p>
                       <div className="flex justify-between gap-1">
                         {[0,1,2,3,4,5,6].map(day => (
                           <button
                             key={day} type="button"
                             className="flex-1 py-2 rounded-lg text-xs font-bold transition-all"
                             style={rec.weekDays.includes(day)
-                              ? { background: '#8B5CF6', color: 'white' }
-                              : { background: 'rgba(255,255,255,0.05)', color: '#71717A' }
+                              ? { background: '#0066b1', color: 'white', border: '1px solid #00aaff', fontFamily: 'var(--font-mono)' }
+                              : { background: 'rgba(255,255,255,0.05)', color: '#71717A', fontFamily: 'var(--font-mono)' }
                             }
                             onClick={() => {
                               const next = rec.weekDays.includes(day)
                                 ? rec.weekDays.filter(d => d !== day)
                                 : [...rec.weekDays, day].sort();
-                              // Prevent deselecting all days
                               if (next.length > 0) updateRecurrence({ weekDays: next });
                             }}
                           >
@@ -793,19 +826,16 @@ export const HabitsPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* ─ Monthly: interval + day-of-month ─ */}
                 {rec.frequency === 'monthly' && (
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium" style={{ color: 'var(--color-text-secondary)' }}>
-                        Interval
-                      </span>
+                      <span className="text-sm font-medium text-gray-300">Interval</span>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Every</span>
+                        <span className="text-xs text-gray-400">Every</span>
                         <select
                           id="monthly-interval"
                           className="input-field py-1.5 text-sm text-center"
-                          style={{ width: 72 }}
+                          style={{ width: 72, fontFamily: 'var(--font-mono)' }}
                           value={rec.interval}
                           onChange={e => updateRecurrence({ interval: parseInt(e.target.value) })}
                         >
@@ -813,19 +843,17 @@ export const HabitsPage: React.FC = () => {
                             <option key={n} value={n}>{n}</option>
                           ))}
                         </select>
-                        <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                        <span className="text-xs text-gray-400">
                           {rec.interval === 1 ? 'month' : 'months'}
                         </span>
                       </div>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium" style={{ color: 'var(--color-text-secondary)' }}>
-                        On day
-                      </span>
+                      <span className="text-sm font-medium text-gray-300">On Day</span>
                       <select
                         id="monthly-day"
                         className="input-field py-1.5 text-sm text-center"
-                        style={{ width: 72 }}
+                        style={{ width: 72, fontFamily: 'var(--font-mono)' }}
                         value={rec.monthDay}
                         onChange={e => updateRecurrence({ monthDay: parseInt(e.target.value) })}
                       >
@@ -837,12 +865,10 @@ export const HabitsPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* ─ End Date ─ */}
+                {/* End Date */}
                 <div className="pt-1 border-t border-white/10">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium" style={{ color: 'var(--color-text-secondary)' }}>
-                      End Date
-                    </span>
+                    <span className="text-sm font-medium text-gray-300">End Date</span>
                     <button
                       type="button"
                       id="end-date-toggle"
@@ -850,7 +876,7 @@ export const HabitsPage: React.FC = () => {
                       className="relative flex-shrink-0 rounded-full transition-colors duration-200"
                       style={{
                         width: 44, height: 24,
-                        background: rec.endDate ? '#8B5CF6' : 'rgba(255,255,255,0.12)',
+                        background: rec.endDate ? '#0066b1' : 'rgba(255,255,255,0.12)',
                       }}
                       aria-label="Toggle end date"
                     >
@@ -874,7 +900,7 @@ export const HabitsPage: React.FC = () => {
               </motion.div>
             )}
 
-            {/* ── Repeat OFF: legacy frequency controls ── */}
+            {/* Repeat OFF legacy controls */}
             {!recEnabled && (
               <motion.div
                 initial={{ opacity: 0, y: -6 }}
@@ -882,7 +908,7 @@ export const HabitsPage: React.FC = () => {
                 className="space-y-3 p-4 rounded-xl border border-white/10 glass"
               >
                 <div>
-                  <p className="text-xs font-medium mb-2" style={{ color: 'var(--color-text-muted)' }}>Frequency</p>
+                  <p className="text-xs font-medium mb-2 text-gray-400">Frequency</p>
                   <select
                     className="input-field text-sm"
                     value={form.repeatType}
@@ -894,15 +920,15 @@ export const HabitsPage: React.FC = () => {
                 </div>
                 {form.repeatType !== 'daily' && (
                   <div>
-                    <p className="text-xs font-medium mb-2" style={{ color: 'var(--color-text-muted)' }}>Active days</p>
+                    <p className="text-xs font-medium mb-2 text-gray-400">Active Days</p>
                     <div className="flex justify-between gap-1">
                       {[0,1,2,3,4,5,6].map(day => (
                         <button
                           key={day} type="button"
                           className="flex-1 py-2 rounded-lg text-xs font-bold transition-all"
                           style={form.selectedDays.includes(day)
-                            ? { background: '#8B5CF6', color: 'white' }
-                            : { background: 'rgba(255,255,255,0.05)', color: '#71717A' }
+                            ? { background: '#0066b1', color: 'white', border: '1px solid #00aaff', fontFamily: 'var(--font-mono)' }
+                            : { background: 'rgba(255,255,255,0.05)', color: '#71717A', fontFamily: 'var(--font-mono)' }
                           }
                           onClick={() => toggleLegacyDay(day)}
                         >
@@ -915,7 +941,6 @@ export const HabitsPage: React.FC = () => {
               </motion.div>
             )}
           </div>
-          {/* ── END REPEAT SECTION ─────────────────────────── */}
 
           {/* Target Time */}
           <div>
@@ -927,21 +952,21 @@ export const HabitsPage: React.FC = () => {
             />
           </div>
 
-          {/* ── SHARE WITH PARTNER OPTION (Create Mode Only) ── */}
+          {/* Share with partner toggle */}
           {!editingHabit && (
             <div className="pt-2 border-t border-white/10">
               <label
-                className="flex items-start gap-3 p-3.5 rounded-xl border border-purple-500/20 bg-purple-950/20 cursor-pointer hover:bg-purple-950/30 transition-all"
+                className="flex items-start gap-3 p-3.5 rounded-xl border border-[#00aaff]/30 bg-[#0066b1]/10 cursor-pointer hover:bg-[#0066b1]/20 transition-all"
               >
                 <input
                   type="checkbox"
                   checked={shareWithPartner}
                   onChange={e => setShareWithPartner(e.target.checked)}
-                  className="mt-0.5 w-4 h-4 rounded border-gray-600 text-purple-600 focus:ring-purple-500 bg-gray-800"
+                  className="mt-0.5 w-4 h-4 rounded border-gray-600 text-[#00aaff] focus:ring-[#00aaff] bg-gray-800"
                 />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 text-sm font-semibold text-white">
-                    <Share2 size={14} className="text-purple-400" />
+                    <Share2 size={14} className="text-[#00aaff]" />
                     Share with {partnerName}
                   </div>
                   <p className="text-xs text-gray-400 mt-0.5">
@@ -967,8 +992,8 @@ export const HabitsPage: React.FC = () => {
         isOpen={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}
         onConfirm={handleDeleteConfirm}
-        title="Delete Habit"
-        message="Are you sure you want to delete this habit? All completion history for this habit will be permanently removed."
+        title="Delete Habit Specification"
+        message="Are you sure you want to delete this habit? All completion history will be permanently removed."
         confirmLabel="Delete"
         confirmDanger
       />

@@ -30,8 +30,8 @@ export const LinkifiedText: React.FC<LinkifiedTextProps> = ({ text }) => {
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                className="underline transition-colors break-all hover:opacity-80"
-                style={{ color: '#A78BFA', textDecoration: 'underline', textUnderlineOffset: '2px' }}
+                className="underline transition-colors break-all hover:text-[#38bdf8] font-medium"
+                style={{ color: '#00aaff', textDecoration: 'underline', textUnderlineOffset: '2px' }}
               >
                 {url}
               </a>

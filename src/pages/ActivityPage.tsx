@@ -9,14 +9,13 @@ import { GAURAV_ID } from '../data/mockData';
 import { formatRelativeTime } from '../utils/helpers';
 import type { ActivityEvent } from '../types';
 import { format, isToday, isYesterday, parseISO } from 'date-fns';
-
 import { containerVariants, itemVariantsX as itemVariants } from '../utils/variants';
 
 function getEventIcon(type: string): string {
   const map: Record<string, string> = {
-    habit_completed: '✅',
+    habit_completed: '⚡',
     habit_undone: '↩️',
-    habit_created: '🌱',
+    habit_created: '🏁',
     habit_edited: '✏️',
     habit_archived: '📦',
     habit_restored: '♻️',
@@ -30,11 +29,11 @@ function getEventIcon(type: string): string {
 }
 
 function getEventColor(type: string): string {
-  if (type === 'habit_completed') return '#10B981';
-  if (type === 'streak_milestone') return '#F59E0B';
-  if (type.startsWith('partner_')) return '#EC4899';
-  if (type === 'habit_created') return '#8B5CF6';
-  return '#71717A';
+  if (type === 'habit_completed') return '#00aaff';
+  if (type === 'streak_milestone') return '#f59e0b';
+  if (type.startsWith('partner_')) return '#38bdf8';
+  if (type === 'habit_created') return '#10b981';
+  return '#5e6878';
 }
 
 function getDateLabel(dateStr: string): string {
@@ -66,17 +65,17 @@ function groupByDay(events: ActivityEvent[]): Array<{ date: string; label: strin
 }
 
 const activityTypeLabel: Record<string, string> = {
-  habit_completed: 'completed',
+  habit_completed: 'completed target',
   habit_undone: 'undid completion of',
-  habit_created: 'created habit',
-  habit_edited: 'updated',
+  habit_created: 'initialized habit',
+  habit_edited: 'recalibrated',
   habit_archived: 'archived',
   habit_restored: 'restored',
   partner_nudge: 'sent a nudge',
   partner_cheer: 'sent a cheer',
   partner_message: 'sent a message',
-  streak_milestone: 'hit a streak milestone!',
-  profile_updated: 'updated profile',
+  streak_milestone: 'achieved telemetry milestone!',
+  profile_updated: 'updated pilot profile',
 };
 
 export const ActivityPage: React.FC = () => {
@@ -107,34 +106,46 @@ export const ActivityPage: React.FC = () => {
 
   const grouped = groupByDay(filtered);
 
-  if (isLoading) return <LoadingSpinner fullscreen label="Loading activity feed..." />;
+  if (isLoading) return <LoadingSpinner fullscreen label="Loading telemetry log..." />;
 
   return (
     <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-6">
       <div>
-        <h1 className="page-title mb-1">Activity Feed</h1>
-        <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Realtime history of habit completion and actions</p>
+        <h1 className="page-title mb-1">Telemetry Feed</h1>
+        <p
+          className="text-xs font-semibold tracking-wider uppercase"
+          style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)' }}
+        >
+          Realtime chronicle of executions and milestones
+        </p>
       </div>
 
       {/* Filter */}
       <div className="flex gap-2">
         {[
-          { key: 'all', label: 'All Activity' },
-          { key: 'mine', label: 'My Actions' },
-          { key: 'partner', label: 'Partner Actions' },
+          { key: 'all', label: 'All Telemetry' },
+          { key: 'mine', label: 'My Logs' },
+          { key: 'partner', label: 'Partner Logs' },
         ].map(f => (
           <button
             key={f.key}
-            className="px-4 py-2 rounded-xl text-xs font-bold transition-all"
-            style={filter === f.key ? {
-              background: 'rgba(139,92,246,0.2)',
-              color: '#A78BFA',
-              border: '1px solid rgba(139,92,246,0.4)',
-            } : {
-              background: 'rgba(255,255,255,0.03)',
-              color: 'var(--color-text-muted)',
-              border: '1px solid rgba(255,255,255,0.08)',
-            }}
+            className="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all uppercase tracking-wider"
+            style={
+              filter === f.key
+                ? {
+                    background: 'linear-gradient(135deg, #1c69d4 0%, #005599 100%)',
+                    color: '#ffffff',
+                    border: '1px solid rgba(0, 170, 255, 0.45)',
+                    boxShadow: '0 0 12px rgba(0, 170, 255, 0.3)',
+                    fontFamily: 'var(--font-display)',
+                  }
+                : {
+                    background: 'rgba(255, 255, 255, 0.04)',
+                    color: 'var(--color-text-muted)',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    fontFamily: 'var(--font-display)',
+                  }
+            }
             onClick={() => setFilter(f.key as any)}
           >
             {f.label}
@@ -143,14 +154,21 @@ export const ActivityPage: React.FC = () => {
       </div>
 
       {grouped.length === 0 ? (
-        <EmptyState icon="📋" title="No activity recorded yet" description="Habit creations, completions, and edits will appear here in chronological order." />
+        <EmptyState
+          icon="📋"
+          title="No telemetry logged yet"
+          description="Habit creations, completions, and edits will appear here in chronological order."
+        />
       ) : (
         <motion.div variants={containerVariants} initial="hidden" animate="show" className="space-y-6">
           {grouped.map(group => (
             <div key={group.date}>
               <div className="flex items-center gap-3 mb-4">
                 <div className="flex-1 h-px bg-white/10" />
-                <span className="text-[11px] font-bold uppercase tracking-wider px-2" style={{ color: 'var(--color-text-muted)' }}>
+                <span
+                  className="text-[10px] font-bold uppercase tracking-widest px-2"
+                  style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)' }}
+                >
                   {group.label}
                 </span>
                 <div className="flex-1 h-px bg-white/10" />
@@ -171,12 +189,15 @@ export const ActivityPage: React.FC = () => {
                       />
                       <div
                         className="flex-1 rounded-xl p-3.5 border glass-strong"
-                        style={{ borderColor: `${color}20` }}
+                        style={{
+                          borderColor: `${color}35`,
+                          boxShadow: `0 4px 20px rgba(0, 0, 0, 0.5)`,
+                        }}
                       >
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-2">
                             <span className="text-base">{getEventIcon(event.type)}</span>
-                            <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                            <p className="text-xs text-gray-300">
                               <span className="font-bold text-white">
                                 {isMe ? 'You' : actorName}
                               </span>{' '}
@@ -193,7 +214,10 @@ export const ActivityPage: React.FC = () => {
                               )}
                             </p>
                           </div>
-                          <span className="text-[10px] flex-shrink-0" style={{ color: 'var(--color-text-muted)' }}>
+                          <span
+                            className="text-[10px] flex-shrink-0"
+                            style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)' }}
+                          >
                             {formatRelativeTime(event.createdAt)}
                           </span>
                         </div>
