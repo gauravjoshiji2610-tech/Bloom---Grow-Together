@@ -1,15 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
-import { Flame, Trophy, Target, TrendingUp } from 'lucide-react';
+import { Flame, Trophy, Target, TrendingUp, User as UserIcon, Heart } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+import { authService } from '../services/authService';
 import { analyticsService } from '../services/analyticsService';
-import { habitService } from '../services/habitService';
 import { LoadingSpinner } from '../components/LoadingSpinner';
-import { EmptyState } from '../components/EmptyState';
-import type { DayProgress, CategoryStats } from '../types';
+import { GAURAV_ID, RADHIKA_ID } from '../data/mockData';
+import type { DayProgress, CategoryStats, User } from '../types';
 import { format, parseISO } from 'date-fns';
-
 import { containerVariants, itemVariants } from '../utils/variants';
 
 interface CustomTooltipProps {
@@ -30,47 +29,97 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label })
 
 export const AnalyticsPage: React.FC = () => {
   const { currentUser } = useAuthStore();
+  const isGaurav = currentUser?.uid === GAURAV_ID;
+  const partnerId = isGaurav ? RADHIKA_ID : GAURAV_ID;
+
+  const [partner, setPartner] = useState<User | null>(null);
+  const [viewUser, setViewUser] = useState<'me' | 'partner'>('me');
   const [isLoading, setIsLoading] = useState(true);
-  const [weeklyData, setWeeklyData] = useState<DayProgress[]>([]);
-  const [monthlyData, setMonthlyData] = useState<DayProgress[]>([]);
-  const [heatmapData, setHeatmapData] = useState<DayProgress[]>([]);
-  const [categoryStats, setCategoryStats] = useState<CategoryStats[]>([]);
-  const [overallStreak, setOverallStreak] = useState({ current: 0, longest: 0 });
-  const [overallCompletion, setOverallCompletion] = useState(0);
+
+  // My analytics state
+  const [myWeeklyData, setMyWeeklyData] = useState<DayProgress[]>([]);
+  const [myMonthlyData, setMyMonthlyData] = useState<DayProgress[]>([]);
+  const [myHeatmapData, setMyHeatmapData] = useState<DayProgress[]>([]);
+  const [myCategoryStats, setMyCategoryStats] = useState<CategoryStats[]>([]);
+  const [myOverallStreak, setMyOverallStreak] = useState({ current: 0, longest: 0 });
+  const [myOverallCompletion, setMyOverallCompletion] = useState(0);
+
+  // Partner analytics state
+  const [partnerWeeklyData, setPartnerWeeklyData] = useState<DayProgress[]>([]);
+  const [partnerMonthlyData, setPartnerMonthlyData] = useState<DayProgress[]>([]);
+  const [partnerHeatmapData, setPartnerHeatmapData] = useState<DayProgress[]>([]);
+  const [partnerCategoryStats, setPartnerCategoryStats] = useState<CategoryStats[]>([]);
+  const [partnerOverallStreak, setPartnerOverallStreak] = useState({ current: 0, longest: 0 });
+  const [partnerOverallCompletion, setPartnerOverallCompletion] = useState(0);
+
   const [activeTab, setActiveTab] = useState<'7d' | '30d' | '90d'>('30d');
 
   useEffect(() => {
     if (!currentUser) return;
-    loadAnalytics();
+    loadAllAnalytics();
   }, [currentUser?.uid]);
 
-  const loadAnalytics = async () => {
+  const loadAllAnalytics = async () => {
     if (!currentUser) return;
     setIsLoading(true);
     try {
-      const [weekly, monthly, heatmap, categories, streaks] = await Promise.all([
+      const users = authService.getUsers();
+      const partnerUser = isGaurav ? users.radhika : users.gaurav;
+      setPartner(partnerUser);
+
+      const [
+        myWeekly, myMonthly, myHeatmap, myCategories, myStreaks,
+        pWeekly, pMonthly, pHeatmap, pCategories, pStreaks
+      ] = await Promise.all([
         analyticsService.getWeeklyStats(currentUser.uid),
         analyticsService.getMonthlyStats(currentUser.uid),
         analyticsService.get90DayHeatmap(currentUser.uid),
         analyticsService.getCategoryStats(currentUser.uid),
         analyticsService.getOverallStreak(currentUser.uid),
+        analyticsService.getWeeklyStats(partnerId),
+        analyticsService.getMonthlyStats(partnerId),
+        analyticsService.get90DayHeatmap(partnerId),
+        analyticsService.getCategoryStats(partnerId),
+        analyticsService.getOverallStreak(partnerId),
       ]);
 
-      setWeeklyData(weekly);
-      setMonthlyData(monthly);
-      setHeatmapData(heatmap);
-      setCategoryStats(categories);
-      setOverallStreak(streaks);
+      setMyWeeklyData(myWeekly);
+      setMyMonthlyData(myMonthly);
+      setMyHeatmapData(myHeatmap);
+      setMyCategoryStats(myCategories);
+      setMyOverallStreak(myStreaks);
 
-      const activeDays = monthly.filter(d => d.total > 0);
-      const avg = activeDays.length > 0
-        ? Math.round(monthly.reduce((sum, d) => sum + d.percentage, 0) / activeDays.length)
+      const myActiveDays = myMonthly.filter(d => d.total > 0);
+      const myAvg = myActiveDays.length > 0
+        ? Math.round(myMonthly.reduce((sum, d) => sum + d.percentage, 0) / myActiveDays.length)
         : 0;
-      setOverallCompletion(avg);
+      setMyOverallCompletion(myAvg);
+
+      setPartnerWeeklyData(pWeekly);
+      setPartnerMonthlyData(pMonthly);
+      setPartnerHeatmapData(pHeatmap);
+      setPartnerCategoryStats(pCategories);
+      setPartnerOverallStreak(pStreaks);
+
+      const pActiveDays = pMonthly.filter(d => d.total > 0);
+      const pAvg = pActiveDays.length > 0
+        ? Math.round(pMonthly.reduce((sum, d) => sum + d.percentage, 0) / pActiveDays.length)
+        : 0;
+      setPartnerOverallCompletion(pAvg);
     } finally {
       setIsLoading(false);
     }
   };
+
+  // Active dataset depending on viewUser
+  const isPartnerView = viewUser === 'partner';
+  const weeklyData = isPartnerView ? partnerWeeklyData : myWeeklyData;
+  const monthlyData = isPartnerView ? partnerMonthlyData : myMonthlyData;
+  const heatmapData = isPartnerView ? partnerHeatmapData : myHeatmapData;
+  const categoryStats = isPartnerView ? partnerCategoryStats : myCategoryStats;
+  const overallStreak = isPartnerView ? partnerOverallStreak : myOverallStreak;
+  const overallCompletion = isPartnerView ? partnerOverallCompletion : myOverallCompletion;
+  const activeColor = isPartnerView ? (!isGaurav ? '#8B5CF6' : '#EC4899') : '#8B5CF6';
 
   const chartData = activeTab === '7d' ? weeklyData : activeTab === '30d' ? monthlyData : heatmapData;
   const formattedChartData = chartData.map(d => ({
@@ -87,24 +136,52 @@ export const AnalyticsPage: React.FC = () => {
 
   const getHeatColor = (percentage: number) => {
     if (percentage === 0) return 'rgba(255,255,255,0.03)';
-    if (percentage < 30) return 'rgba(139,92,246,0.2)';
-    if (percentage < 60) return 'rgba(139,92,246,0.4)';
-    if (percentage < 80) return 'rgba(139,92,246,0.65)';
-    return 'rgba(139,92,246,0.9)';
+    if (percentage < 30) return `${activeColor}33`;
+    if (percentage < 60) return `${activeColor}66`;
+    if (percentage < 80) return `${activeColor}AA`;
+    return activeColor;
   };
 
   if (isLoading) return <LoadingSpinner fullscreen label="Computing analytics..." />;
-
-  const hasAnyData = monthlyData.some(d => d.total > 0) || categoryStats.length > 0;
 
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-6">
       <motion.div variants={containerVariants} initial="hidden" animate="show" className="space-y-6">
 
-        {/* Header */}
-        <motion.div variants={itemVariants}>
-          <h1 className="page-title mb-1">Analytics & Consistency</h1>
-          <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Realtime performance tracking</p>
+        {/* Header & View Switcher */}
+        <motion.div variants={itemVariants} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="page-title mb-1">Analytics & Consistency</h1>
+            <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
+              Realtime performance tracking for {isPartnerView ? partner?.name || 'Partner' : 'You'}
+            </p>
+          </div>
+
+          {/* Tab Switcher: My Analytics | Partner Analytics */}
+          <div className="flex gap-1.5 p-1.5 rounded-2xl glass border border-white/10 self-start sm:self-auto">
+            <button
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                !isPartnerView
+                  ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+              onClick={() => setViewUser('me')}
+            >
+              <UserIcon size={14} />
+              My Analytics
+            </button>
+            <button
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                isPartnerView
+                  ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+              onClick={() => setViewUser('partner')}
+            >
+              <Heart size={14} />
+              {partner?.name || 'Partner'}&apos;s Analytics
+            </button>
+          </div>
         </motion.div>
 
         {/* Key Stats */}
@@ -131,8 +208,8 @@ export const AnalyticsPage: React.FC = () => {
               value: overallCompletion,
               unit: '%',
               icon: Target,
-              color: '#8B5CF6',
-              glow: 'rgba(139,92,246,0.12)',
+              color: activeColor,
+              glow: `${activeColor}20`,
             },
             {
               label: 'Today',
@@ -143,7 +220,8 @@ export const AnalyticsPage: React.FC = () => {
               glow: 'rgba(236,72,153,0.12)',
             },
           ].map(stat => (
-            <div key={stat.label}
+            <div
+              key={stat.label}
               className="card p-4 flex flex-col gap-3 border"
               style={{ borderColor: `${stat.color}25`, background: stat.glow }}
             >
@@ -168,19 +246,24 @@ export const AnalyticsPage: React.FC = () => {
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="section-title">Completion Trend</h2>
-              <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>Historical completion percentage</p>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
+                {isPartnerView ? `${partner?.name}'s historical completion` : 'Historical completion percentage'}
+              </p>
             </div>
             <div className="flex gap-1 p-1 rounded-xl glass border border-white/5">
               {(['7d', '30d', '90d'] as const).map(tab => (
-                <button key={tab}
+                <button
+                  key={tab}
                   className="px-3 py-1 rounded-lg text-xs font-semibold transition-all"
                   style={activeTab === tab ? {
-                    background: '#8B5CF6', color: 'white', boxShadow: '0 2px 10px rgba(139,92,246,0.3)'
+                    background: activeColor, color: 'white', boxShadow: `0 2px 10px ${activeColor}4D`
                   } : {
                     color: 'var(--color-text-muted)'
                   }}
                   onClick={() => setActiveTab(tab)}
-                >{tab}</button>
+                >
+                  {tab}
+                </button>
               ))}
             </div>
           </div>
@@ -190,14 +273,14 @@ export const AnalyticsPage: React.FC = () => {
               <AreaChart data={formattedChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorArea" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0.0} />
+                    <stop offset="5%" stopColor={activeColor} stopOpacity={0.4} />
+                    <stop offset="95%" stopColor={activeColor} stopOpacity={0.0} />
                   </linearGradient>
                 </defs>
                 <XAxis dataKey="label" stroke="#71717A" fontSize={11} tickLine={false} axisLine={false} />
                 <YAxis stroke="#71717A" fontSize={11} tickLine={false} axisLine={false} domain={[0, 100]} />
                 <Tooltip content={<CustomTooltip />} />
-                <Area type="monotone" dataKey="percentage" stroke="#8B5CF6" strokeWidth={2.5} fillOpacity={1} fill="url(#colorArea)" />
+                <Area type="monotone" dataKey="percentage" stroke={activeColor} strokeWidth={2.5} fillOpacity={1} fill="url(#colorArea)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -207,7 +290,9 @@ export const AnalyticsPage: React.FC = () => {
         <motion.div variants={itemVariants} className="card p-6">
           <div className="mb-4">
             <h2 className="section-title">90-Day Consistency Heatmap</h2>
-            <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>Daily habit completion density</p>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
+              {isPartnerView ? `${partner?.name}'s daily habit completion density` : 'Daily habit completion density'}
+            </p>
           </div>
 
           <div className="flex flex-wrap gap-1.5 justify-center sm:justify-start">
@@ -230,7 +315,9 @@ export const AnalyticsPage: React.FC = () => {
           <motion.div variants={itemVariants} className="card p-6">
             <div className="mb-4">
               <h2 className="section-title">Category Performance</h2>
-              <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>Habit completion by category</p>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
+                {isPartnerView ? `${partner?.name}'s habit completion by category` : 'Habit completion by category'}
+              </p>
             </div>
             <div className="h-48 w-full">
               <ResponsiveContainer width="100%" height="100%">
@@ -247,14 +334,6 @@ export const AnalyticsPage: React.FC = () => {
               </ResponsiveContainer>
             </div>
           </motion.div>
-        )}
-
-        {!hasAnyData && (
-          <EmptyState
-            icon="📊"
-            title="No completion data yet"
-            description="As you track and complete daily habits, your completion trends, heatmaps, and category statistics will automatically populate here."
-          />
         )}
 
       </motion.div>
