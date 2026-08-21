@@ -1,22 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Plus, Flame, Target, TrendingUp, ChevronRight, Star, Sparkles, Clock, CheckCircle2, RefreshCw } from 'lucide-react';
+import { Plus, Flame, Target, ChevronRight, Star, Sparkles, Clock, CheckCircle2, RefreshCw } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useHabitStore } from '../store/habitStore';
 import { ProgressRing } from '../components/ProgressRing';
 import { StreakBadge } from '../components/StreakBadge';
-import { Avatar } from '../components/Avatar';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { EmptyState } from '../components/EmptyState';
 import { Modal } from '../components/Modal';
 import { LinkifiedText } from '../components/LinkifiedText';
-import { authService } from '../services/authService';
-import { habitService, isScheduledOnDate } from '../services/habitService';
-import { activityService } from '../services/activityService';
-import { GAURAV_ID, RADHIKA_ID } from '../data/mockData';
+import { ExpandableDescription } from '../components/ExpandableDescription';
+import { isScheduledOnDate } from '../services/habitService';
 import { getGreeting, getCategoryLabel, getDayName } from '../utils/helpers';
-import type { User, ActivityEvent, HabitWithLog } from '../types';
+import type { HabitWithLog } from '../types';
 import { containerVariants, itemVariants } from '../utils/variants';
 
 export const DashboardPage: React.FC = () => {
@@ -24,31 +21,11 @@ export const DashboardPage: React.FC = () => {
   const { habits, todayProgress, loadHabits, completeHabit, undoCompletion, isLoading } = useHabitStore();
   const navigate = useNavigate();
 
-  const [partner, setPartner] = useState<User | null>(null);
-  const [partnerProgress, setPartnerProgress] = useState({ total: 0, completed: 0, percentage: 0 });
-  const [partnerHabits, setPartnerHabits] = useState<HabitWithLog[]>([]);
-  const [recentActivity, setRecentActivity] = useState<ActivityEvent[]>([]);
-  const [partnerStreak, setPartnerStreak] = useState(0);
   const [selectedHabitForDetail, setSelectedHabitForDetail] = useState<HabitWithLog | null>(null);
-
-  const isGaurav = currentUser?.uid === GAURAV_ID;
-  const partnerId = isGaurav ? RADHIKA_ID : GAURAV_ID;
 
   useEffect(() => {
     if (!currentUser) return;
     loadHabits(currentUser.uid);
-
-    const users = authService.getUsers();
-    const partnerUser = isGaurav ? users.radhika : users.gaurav;
-    setPartner(partnerUser);
-
-    habitService.getTodayProgress(partnerId).then(setPartnerProgress);
-    habitService.getHabits(partnerId).then(pHabits => {
-      setPartnerHabits(pHabits.filter(h => !h.isArchived));
-      const maxStreak = Math.max(...pHabits.map(h => h.streak), 0);
-      setPartnerStreak(maxStreak);
-    });
-    activityService.getActivity(5).then(setRecentActivity);
   }, [currentUser?.uid]);
 
   const myActiveHabits = habits.filter(h => !h.isArchived);
@@ -58,20 +35,6 @@ export const DashboardPage: React.FC = () => {
   const completedToday = todayHabits.filter(h => h.todayLog?.completed);
   const remainingToday = todayHabits.filter(h => !h.todayLog?.completed);
   const myMaxStreak = Math.max(...myActiveHabits.map(h => h.streak), 0);
-
-  const activityTypeLabel: Record<string, string> = {
-    habit_completed: 'completed',
-    habit_undone: 'undid completion of',
-    habit_created: 'created habit',
-    habit_edited: 'edited habit',
-    habit_archived: 'archived habit',
-    habit_restored: 'restored habit',
-    partner_nudge: 'nudged',
-    partner_cheer: 'cheered',
-    partner_message: 'messaged',
-    streak_milestone: 'hit a streak milestone on',
-    profile_updated: 'updated profile',
-  };
 
   if (isLoading && habits.length === 0) {
     return <LoadingSpinner fullscreen label="Loading dashboard..." />;
@@ -163,160 +126,98 @@ export const DashboardPage: React.FC = () => {
           </div>
         </motion.div>
 
-        {/* Two Column Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Up Next Today — All Scheduled Habits */}
+        <motion.div variants={itemVariants} className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="section-title">Up Next Today</h2>
+            {remainingToday.length > 0 && (
+              <span className="badge badge-purple">{remainingToday.length} remaining</span>
+            )}
+          </div>
 
-          {/* Up Next Habits */}
-          <motion.div variants={itemVariants}>
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="section-title">Up Next Today</h2>
-              {remainingToday.length > 0 && (
-                <span className="badge badge-purple">{remainingToday.length} remaining</span>
-              )}
+          {myActiveHabits.length === 0 ? (
+            <EmptyState
+              icon="🌱"
+              title="No active habits"
+              description="Create your first habit to start building daily consistency."
+              action={{ label: 'Create Habit', onClick: () => navigate('/habits?new=1') }}
+            />
+          ) : remainingToday.length === 0 ? (
+            <div className="card p-8 text-center border border-white/5">
+              <div className="text-4xl mb-2">🎊</div>
+              <p className="font-bold text-white text-base">All caught up!</p>
+              <p className="text-xs mt-1" style={{ color: 'var(--color-text-secondary)' }}>
+                You have completed all scheduled habits for today.
+              </p>
             </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              {remainingToday.map(habit => {
+                const scheduleText = (() => {
+                  if (habit.recurrence?.enabled) {
+                    const { frequency, interval, weekDays, monthDay } = habit.recurrence;
+                    if (frequency === 'daily') return interval === 1 ? 'Every day' : `Every ${interval} days`;
+                    if (frequency === 'weekly') return interval === 1 ? weekDays.map(d => getDayName(d, true)).join(', ') : `Every ${interval}w — ${weekDays.map(d => getDayName(d, true)).join(', ')}`;
+                    if (frequency === 'monthly') return interval === 1 ? `Monthly on ${monthDay}` : `Every ${interval} months on ${monthDay}`;
+                  }
+                  return habit.repeatType === 'daily'
+                    ? 'Every day'
+                    : habit.selectedDays?.map(d => getDayName(d, true)).join(', ') || 'Scheduled';
+                })();
 
-            {myActiveHabits.length === 0 ? (
-              <EmptyState
-                icon="🌱"
-                title="No active habits"
-                description="Create your first habit to start building daily consistency with your partner."
-                action={{ label: 'Create Habit', onClick: () => navigate('/habits?new=1') }}
-              />
-            ) : remainingToday.length === 0 ? (
-              <div className="card p-8 text-center border border-white/5">
-                <div className="text-4xl mb-2">🎊</div>
-                <p className="font-bold text-white text-base">All caught up!</p>
-                <p className="text-xs mt-1" style={{ color: 'var(--color-text-secondary)' }}>
-                  You have completed all scheduled habits for today.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-2.5">
-                {remainingToday.slice(0, 4).map(habit => (
+                return (
                   <motion.div
                     key={habit.id}
-                    whileHover={{ x: 4 }}
-                    className="card p-3.5 flex items-center gap-3 cursor-pointer card-hover"
+                    whileHover={{ y: -2 }}
+                    className="card p-4 cursor-pointer card-hover border border-white/10 relative flex flex-col justify-between"
                     onClick={() => setSelectedHabitForDetail(habit)}
                   >
-                    <div
-                      className="w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0"
-                      style={{ background: `${habit.color}20`, border: `1px solid ${habit.color}30` }}
-                    >
-                      {habit.icon}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-white truncate">{habit.name}</p>
-                      <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{habit.time} · {getCategoryLabel(habit.category)}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <StreakBadge streak={habit.streak} size="sm" />
-                      <ChevronRight size={16} style={{ color: 'var(--color-text-muted)' }} />
+                    <div>
+                      <div className="flex items-start gap-3">
+                        <div
+                          className="w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0"
+                          style={{ background: `${habit.color}20`, border: `1px solid ${habit.color}30` }}
+                        >
+                          {habit.icon}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-sm font-bold text-white truncate">{habit.name}</p>
+                            {habit.priority === 'high' && (
+                              <Star size={12} fill="#EF4444" style={{ color: '#EF4444', flexShrink: 0 }} />
+                            )}
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2 mt-1">
+                            <span className="badge badge-purple text-[10px]">{getCategoryLabel(habit.category)}</span>
+                            <span className="flex items-center gap-1 text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
+                              <Clock size={11} />
+                              {habit.time}
+                            </span>
+                            <span className="flex items-center gap-1 text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
+                              {habit.recurrence?.enabled && habit.recurrence.interval > 1 && <RefreshCw size={10} />}
+                              {scheduleText}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          <StreakBadge streak={habit.streak} size="sm" />
+                          <ChevronRight size={16} style={{ color: 'var(--color-text-muted)' }} />
+                        </div>
+                      </div>
+
+                      {/* Expandable description with multiline & clickable URLs */}
+                      {habit.description && (
+                        <div className="mt-2 pt-2 border-t border-white/5">
+                          <ExpandableDescription description={habit.description} />
+                        </div>
+                      )}
                     </div>
                   </motion.div>
-                ))}
-                {remainingToday.length > 4 && (
-                  <button
-                    className="w-full text-center text-xs font-semibold py-2"
-                    style={{ color: 'var(--color-text-secondary)' }}
-                    onClick={() => navigate('/habits')}
-                  >
-                    +{remainingToday.length - 4} more habits
-                  </button>
-                )}
-              </div>
-            )}
-          </motion.div>
-
-          {/* Partner Card */}
-          <motion.div variants={itemVariants}>
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="section-title">Partner Overview</h2>
-              <button
-                className="btn-ghost text-xs"
-                onClick={() => navigate('/partner')}
-              >
-                View Overview <ChevronRight size={12} className="inline" />
-              </button>
+                );
+              })}
             </div>
-
-            {partner ? (
-              <div
-                className="card p-5 cursor-pointer card-hover"
-                onClick={() => navigate('/partner')}
-                style={{
-                  background: !isGaurav
-                    ? 'linear-gradient(135deg, rgba(139,92,246,0.1), rgba(24,24,36,0.95))'
-                    : 'linear-gradient(135deg, rgba(236,72,153,0.1), rgba(24,24,36,0.95))',
-                  borderColor: !isGaurav
-                    ? 'rgba(139,92,246,0.25)'
-                    : 'rgba(236,72,153,0.25)',
-                }}
-              >
-                <div className="flex items-center gap-4 mb-4">
-                  <Avatar
-                    name={partner.name}
-                    src={partner.avatar}
-                    size="lg"
-                    isGaurav={!isGaurav}
-                  />
-                  <div className="flex-1">
-                    <p className="font-bold text-white text-base">{partner.name}</p>
-                    <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>{partner.bio}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-4">
-                  <ProgressRing
-                    percentage={partnerProgress.percentage}
-                    size={80}
-                    strokeWidth={7}
-                    color={!isGaurav ? '#8B5CF6' : '#EC4899'}
-                  >
-                    <div className="text-center">
-                      <div className="text-base font-black text-white">{partnerProgress.percentage}%</div>
-                    </div>
-                  </ProgressRing>
-
-                  <div className="space-y-1.5 text-xs">
-                    <div className="flex items-center gap-2">
-                      <Target size={13} style={{ color: 'var(--color-text-muted)' }} />
-                      <span style={{ color: 'var(--color-text-secondary)' }}>
-                        {partnerProgress.completed}/{partnerProgress.total} completed today
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Flame size={13} style={{ color: '#F59E0B' }} />
-                      <span style={{ color: 'var(--color-text-secondary)' }}>
-                        {partnerStreak} day streak
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <TrendingUp size={13} style={{ color: '#10B981' }} />
-                      <span style={{ color: 'var(--color-text-secondary)' }}>
-                        {partnerHabits.length} active habits
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-4 progress-bar">
-                  <div
-                    className="progress-fill"
-                    style={{
-                      width: `${partnerProgress.percentage}%`,
-                      background: `linear-gradient(90deg, ${!isGaurav ? '#6D28D9' : '#9333EA'}, ${!isGaurav ? '#8B5CF6' : '#EC4899'})`,
-                    }}
-                  />
-                </div>
-              </div>
-            ) : (
-              <div className="card p-8 text-center">
-                <p style={{ color: 'var(--color-text-muted)' }}>Partner account pending</p>
-              </div>
-            )}
-          </motion.div>
-        </div>
+          )}
+        </motion.div>
 
         {/* Completed Today section */}
         {completedToday.length > 0 && (
