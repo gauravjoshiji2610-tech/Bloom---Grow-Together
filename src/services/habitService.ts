@@ -3,10 +3,13 @@ import { activityService } from './activityService';
 import { storageService } from './storageService';
 import { db } from './firebase';
 import { doc, collection, setDoc, deleteDoc, getDocs, onSnapshot } from 'firebase/firestore';
+import { getHabitDate } from '../utils/helpers';
 
+/** Current logical habit date (4 AM boundary) — single source of truth for this service. */
 function todayStr(): string {
-  return new Date().toISOString().split('T')[0];
+  return getHabitDate();
 }
+
 
 /**
  * Single source of truth for whether a habit is scheduled on a given date.
@@ -71,52 +74,53 @@ export function computeStreak(habitId: string, logs: HabitLog[], habit: Habit): 
 
   if (completedDates.size === 0) return { current: 0, longest: 0 };
 
-  const today = todayStr();
+  // Use the 4 AM logical habit date as "today" so that 00:00–03:59 is still the previous day
+  const habitToday = getHabitDate();
+
   let currentStreak = 0;
   let longestStreak = 0;
   let tempStreak = 0;
 
-  const checkDate = new Date();
-  for (let i = 0; i < 365; i++) {
-    const dateStr = checkDate.toISOString().split('T')[0];
+  // Walk backwards day by day from logical today.
+  // Use a local-date-based counter to avoid UTC toISOString shifting the date.
+  const startDate = new Date();
+  // Rewind to the logical today at noon (local) to avoid any DST edge
+  startDate.setHours(12, 0, 0, 0);
 
-    const shouldRun = isScheduledOnDate(habit, dateStr);
+  for (let i = 0; i < 366; i++) {
+    const d = new Date(startDate);
+    d.setDate(d.getDate() - i);
+    const y = d.getFullYear();
+    const mo = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const dateStr = `${y}-${mo}-${day}`;
 
-    if (!shouldRun) {
-      checkDate.setDate(checkDate.getDate() - 1);
-      continue;
-    }
+    if (!isScheduledOnDate(habit, dateStr)) continue;
 
     const isCompleted = completedDates.has(dateStr);
 
     if (isCompleted) {
       tempStreak++;
-      if (tempStreak > longestStreak) {
-        longestStreak = tempStreak;
-      }
-      if (currentStreak === tempStreak - 1) {
-        currentStreak = tempStreak;
-      }
+      if (tempStreak > longestStreak) longestStreak = tempStreak;
+      if (currentStreak === tempStreak - 1) currentStreak = tempStreak;
     } else {
-      if (dateStr === today) {
-        // Not completed today yet
+      // The current logical habit day is still in progress — do not penalise it yet.
+      // It only becomes "missed" once the 4 AM boundary passes.
+      if (dateStr === habitToday) {
+        // still today — grace period, do not break streak
       } else {
-        if (currentStreak === 0 && tempStreak > 0) {
-          currentStreak = tempStreak;
-        }
+        // A past scheduled day was missed → current streak is frozen
+        if (currentStreak === 0 && tempStreak > 0) currentStreak = tempStreak;
         tempStreak = 0;
       }
     }
-
-    checkDate.setDate(checkDate.getDate() - 1);
   }
 
-  if (currentStreak === 0 && tempStreak > 0) {
-    currentStreak = tempStreak;
-  }
+  if (currentStreak === 0 && tempStreak > 0) currentStreak = tempStreak;
 
   return { current: currentStreak, longest: Math.max(longestStreak, currentStreak) };
 }
+
 
 function computeCompletionRate(habitId: string, logs: HabitLog[]): number {
   const habitLogs = logs.filter(l => l.habitId === habitId);

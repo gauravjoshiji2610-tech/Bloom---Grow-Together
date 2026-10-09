@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Plus, Flame, Target, ChevronRight, Star, Sparkles, Clock, CheckCircle2, RefreshCw } from 'lucide-react';
+import { Plus, Flame, Target, ChevronRight, Star, Sparkles, Clock, CheckCircle2, RefreshCw, CalendarDays } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useHabitStore } from '../store/habitStore';
 import { ProgressRing } from '../components/ProgressRing';
@@ -12,9 +12,11 @@ import { Modal } from '../components/Modal';
 import { LinkifiedText } from '../components/LinkifiedText';
 import { ExpandableDescription } from '../components/ExpandableDescription';
 import { isScheduledOnDate } from '../services/habitService';
-import { getGreeting, getCategoryLabel, getDayName } from '../utils/helpers';
+import { getGreeting, getCategoryLabel, getDayName, getHabitDate } from '../utils/helpers';
 import type { HabitWithLog } from '../types';
 import { containerVariants, itemVariants } from '../utils/variants';
+import { format, parseISO } from 'date-fns';
+
 
 export const DashboardPage: React.FC = () => {
   const { currentUser } = useAuthStore();
@@ -29,12 +31,20 @@ export const DashboardPage: React.FC = () => {
   }, [currentUser?.uid]);
 
   const myActiveHabits = habits.filter(h => !h.isArchived);
-  const _todayStr = new Date().toISOString().split('T')[0];
-  const todayHabits = myActiveHabits.filter(h => isScheduledOnDate(h, _todayStr));
+  // Use the 4 AM logical habit date so 00:00–03:59 still shows previous day's habits
+  const habitDateStr = getHabitDate();
+  const todayHabits = myActiveHabits.filter(h => isScheduledOnDate(h, habitDateStr));
 
   const completedToday = todayHabits.filter(h => h.todayLog?.completed);
   const remainingToday = todayHabits.filter(h => !h.todayLog?.completed);
   const myMaxStreak = Math.max(...myActiveHabits.map(h => h.streak), 0);
+
+  // Formatted habit date for display (e.g. "October 8")
+  const habitDateDisplay = format(parseISO(habitDateStr), 'MMMM d');
+  // Whether the logical habit date differs from the current calendar date
+  const calendarDateStr = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD in local tz
+  const isEarlyMorning = habitDateStr !== calendarDateStr;
+
 
   if (isLoading && habits.length === 0) {
     return <LoadingSpinner fullscreen label="Initializing Cockpit..." />;
@@ -182,8 +192,27 @@ export const DashboardPage: React.FC = () => {
 
         {/* Up Next Today — All Scheduled Habits */}
         <motion.div variants={itemVariants} className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="section-title">Today's Missions</h2>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-2.5">
+              <h2 className="section-title">Today's Missions</h2>
+              {/* Habit date display — shows 4 AM adjusted date */}
+              <span
+                className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-widest"
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  background: isEarlyMorning
+                    ? 'rgba(239,68,68,0.13)'
+                    : 'rgba(0,170,255,0.10)',
+                  color: isEarlyMorning ? '#f87171' : '#00aaff',
+                  border: `1px solid ${isEarlyMorning ? 'rgba(239,68,68,0.30)' : 'rgba(0,170,255,0.25)'}`,
+                }}
+                title={isEarlyMorning ? 'Habit day has not reset yet (resets at 4:00 AM)' : 'Current habit day'}
+              >
+                <CalendarDays size={10} />
+                {habitDateDisplay}
+                {isEarlyMorning && <span className="opacity-70">· pre-dawn</span>}
+              </span>
+            </div>
             {remainingToday.length > 0 && (
               <span className="badge badge-purple">{remainingToday.length} remaining</span>
             )}
